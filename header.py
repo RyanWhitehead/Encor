@@ -12,6 +12,20 @@ Interviewing = 1606849078784
 Onboarding   = 1606849114297
 Hired        = 1606849160320
 
+#the ricochet Status
+new = 18823
+new_dial = 19050
+called_left_message = 18855
+called_no_contact = 18856
+contacted_call_back = 18859
+contacted_not_interested = 18857
+contacted_wrong_number = 18858
+interview_completed = 18863
+interview_dropped = 18862
+interview_no_show = 18861
+interview_scheduled = 18860
+hired_ric = 18864
+
 def get_secret(secret):
 
     secret_name = "Breezy_sign_in"
@@ -133,7 +147,7 @@ def updateStatus(lead_id, new_status):
         "Content-Type":"application/json"
         }
     body = {
-        "status_id": 123
+        "status_id": new_status
         }
     r = requests.post("https://ricochet.me/api/v4/leads/"+lead_id+"/status", data=body, headers=head)
     print(r)
