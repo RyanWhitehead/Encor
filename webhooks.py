@@ -163,61 +163,67 @@ def dispositionChanged():
         lead_id = header.find_file(candidate_id)[0][2]
         
         print(candidate_id,position_id,disposition)
-        
-        #get the correct pipleine stage based off of the disposistion
-        if disposition == "Offer Made - Accepted":
-            stage = header.Onboarding
-            hired = True
-            
-        elif disposition == "Offer Made - Not Accepted":
-            stage = header.Disqualified
-            header.delete_file(candidate_id)
-            header.addCustom(candidate_id,position_id,'Discard Reason','Offer Made - Not Accepted')
-            
-        elif disposition == "Not Offered":
-            stage = header.Disqualified
-            header.delete_file(candidate_id)
-            header.addCustom(candidate_id,position_id,'Discard Reason','Not Offered')
-
-        elif disposition == "No Show": #this is a problem because of rescheduling
-            no_show = False
-            rescheduled = False
-            stage = header.Interviewing
-            for i in header.get_candidate(candidate_id,position_id).json()['custom_attributes']:
-                if i['name'] == 'No Show':
-                    no_show = True
-                    if i['value'] != request.form['id']:
-                        header.addCustom(candidate_id,position_id,'No Show',request.form['id'])
-                        header.updateStatus(lead_id,header.interview_dropped)
-                        print('it did the thing')
-                        change = False
-                if i['name'] == 'Has Rescheduled':
-                    rescheduled = True
-            if no_show and rescheduled: #if they have no showed before, and have reshceduled before
-                header.addCustom(candidate_id,position_id,'No Show',request.form['id'])
-                header.updateStatus(lead_id,header.interview_dropped)
-                print('it did the thing')
-                change = False
+        if request.form['action'] == changed:
+            #get the correct pipleine stage based off of the disposistion
+            if disposition == "Offer Made - Accepted":
+                stage = header.Onboarding
+                hired = True
                 
-            if no_show != True:
-                header.addCustom(candidate_id,position_id,'No Show',request.form['id'])
-                header.updateStatus(lead_id,header.interview_no_show)
+            elif disposition == "Offer Made - Not Accepted":
+                stage = header.Disqualified
+                header.delete_file(candidate_id)
+                header.addCustom(candidate_id,position_id,'Discard Reason','Offer Made - Not Accepted')
+                
+            elif disposition == "Not Offered":
+                stage = header.Disqualified
+                header.delete_file(candidate_id)
+                header.addCustom(candidate_id,position_id,'Discard Reason','Not Offered')
+
+
+            #this needs to know a few things, did they schedule from a text or were they called (I can check this by seeing if they were in a contacted status previousely), if they were 
+            # called, put them into noshow(owned) otherwise if they noshow an interview, and were never in a contact status put them in the noshow status. second, have they no 
+            # showed an interview before, if they have and are doing it again, we need to update their breezy to disqaulifed as well as ricochet.
+            elif disposition == "No Show": #this is a problem because of rescheduling
+                no_show = False
+                rescheduled = False
                 stage = header.Interviewing
+                for i in header.get_candidate(candidate_id,position_id).json()['custom_attributes']:
+                    if i['name'] == 'No Show':
+                        no_show = True
+                        if i['value'] != request.form['id']:
+                            header.addCustom(candidate_id,position_id,'No Show',request.form['id'])
+                            header.updateStatus(lead_id,header.interview_dropped)
+                            print('it did the thing')
+                            change = False
+                    if i['name'] == 'Has Rescheduled':
+                        rescheduled = True
+                if no_show and rescheduled: #if they have no showed before, and have reshceduled before
+                    header.addCustom(candidate_id,position_id,'No Show',request.form['id'])
+                    header.updateStatus(lead_id,header.interview_dropped)
+                    print('it did the thing')
+                    change = False
+                    
+                if no_show != True:
+                    header.addCustom(candidate_id,position_id,'No Show',request.form['id'])
+                    header.updateStatus(lead_id,header.interview_no_show)
+                    stage = header.Interviewing
+                    
+            elif disposition == "" or disposition == "Pending":
+                change = False
+
+            #update breezy with the crroect pipleine stage
+            if change:
+                header.updateStage(candidate_id,position_id,stage)
+
+            #if they have been offered and accepted
+            if hired:
+                print("Hired")
+                header.updateStatus(lead_id,header.hired_ric)
+                header.delete_file(candidate_id)
                 
-        elif disposition == "" or disposition == "Pending":
-            change = False
-
-        #update breezy with the crroect pipleine stage
-        if change:
-            header.updateStage(candidate_id,position_id,stage)
-
-        #if they have been offered and accepted
-        if hired:
-            print("Hired")
-            header.updateStatus(lead_id,header.hired_ric)
-            header.delete_file(candidate_id)
-            
-        return Response(status=200)
+            return Response(status=200)
+        else:
+            return Response(status=201)
     except UnboundLocalError or KeyError:
         print("Someone is missing necassary information")
         return Response(status=401)
@@ -247,9 +253,11 @@ def statusUpdate():
    
     if lead['status'] == "2. CONTACTED - Not Interested": #this is when we learn they are no longer interested over the phone
         header.unasign(lead)
+        header.updateStatus(lead_id,header.disqualified_ric)
 
     elif lead['status'] == "2. CONTACTED - Wrong Numebr": #this is when they no show twice
         header.unasign(lead)
+        header.updateStatus(lead_id,header.disqualified_ric)
 
     elif lead['status'] == "0. NEW - Dial": #this is when they are in theyve been texted twice
         header.updateStage(candidate_id,position_id,header.Dialing)

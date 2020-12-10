@@ -13,6 +13,7 @@ Onboarding   = 1606849114297
 Hired        = 1606849160320
 
 #the ricochet Status
+disqualified_ric = 11111
 new = 18823
 new_dial = 19050
 called_left_message = 18855
@@ -155,11 +156,8 @@ def updateStatus(lead_id, new_status):
     print(new_status)
 
 def unasign(lead):
-    print('woah')
     #get the person who wasnt contacted
     candidate_id = lead['candidate_id']
-    print(candidate_id)
-    print(find_file(candidate_id))
     position_id = find_file(candidate_id)[0][1]
     #update their stage to whatever, and delete them from the csv
     addCustom(candidate_id,position_id,'Discard Reason',lead['status'])
