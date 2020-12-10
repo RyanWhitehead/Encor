@@ -133,9 +133,9 @@ def updateStatus(lead_id, new_status):
         "Content-Type":"application/json"
         }
     body = {
-        "status": new_status
+        "status_id": 123
         }
-    r = requests.post("https://ricochet.me/api/v1/leads/"+lead_id+"/status", data=body, headers=head)
+    r = requests.post("https://ricochet.me/api/v4/leads/"+lead_id+"/status", data=body, headers=head)
     print(r)
     jprint(r.json())
 

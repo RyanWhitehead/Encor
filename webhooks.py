@@ -49,17 +49,15 @@ ricochet_post_token = header.get_secret('ricochet_post_token')
 def interviewScheduled():
     try:
         if request.form['action'] == 'scheduled' or request.form['action'] == 'rescheduled':
-             
-            print(request.form['id'])
-            print(request.form['action'])
             acuity = requests.get("https://acuityscheduling.com/api/v1/appointments/"+request.form['id'], auth=(acuity_user_id,acuity_api_key))
             for i in acuity.json()['forms']: #Note: the order these come in is soonest to latesest, that menas the appointment id is the latest
                 if i['name'] == "Candidate Id":
                     candidate_id = i['values'][0]['value']
+
             position_id = header.find_file(candidate_id)[0][1]
             lead_id = header.find_file(candidate_id)[0][2]
+
             if request.form['action'] == 'rescheduled':
-                print("what")
                 header.addCustom(candidate_id,position_id,'Has Rescheduled','True')
                 #change the appointment dispostiion back to nil
                 empty_disposition = json.dumps({"feilds":[{"id":8806210,"value":""}]})
@@ -72,11 +70,14 @@ def interviewScheduled():
             #update ricochet status
             header.updateStatus(lead_id,"3. INTERVIEW - Scheduled")
             return Response(status=200)
+
         else:
             return Response(status=201)
+
     except UnboundLocalError or KeyError:
         print("Someone is missing necassary information")
         return Response(status=401)
+
     except IndexError:
         print("There is some issue finding a candidate in the csv")
         return Response(status=501)
@@ -99,7 +100,6 @@ def candidateAdded():
         position_id = request.json['object']['position']['_id']
         breezy_candidate = header.get_candidate(candidate_id,position_id).json()
         
-        print(candidate_id, position_id, breezy_company_id)
         first_name = request.json['object']['candidate']['name'].split()[0]
         last_name = request.json['object']['candidate']['name'].split()[-1]
         position = request.json['object']['position']['name']
