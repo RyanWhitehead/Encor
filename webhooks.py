@@ -47,41 +47,41 @@ ricochet_post_token = header.get_secret('ricochet_post_token')
 #stage id to 'Interviewing'. this is so that we know not to text the candidate again.
 @app.route('/interviewScheduled', methods=['POST'])
 def interviewScheduled():
-    try:
-        if request.form['action'] == 'scheduled' or request.form['action'] == 'rescheduled':
-            acuity = requests.get("https://acuityscheduling.com/api/v1/appointments/"+request.form['id'], auth=(acuity_user_id,acuity_api_key))
-            for i in acuity.json()['forms']: #Note: the order these come in is soonest to latesest, that menas the appointment id is the latest
-                if i['name'] == "Candidate Id":
-                    candidate_id = i['values'][0]['value']
+    #try:
+    if request.form['action'] == 'scheduled' or request.form['action'] == 'rescheduled':
+        acuity = requests.get("https://acuityscheduling.com/api/v1/appointments/"+request.form['id'], auth=(acuity_user_id,acuity_api_key))
+        for i in acuity.json()['forms']: #Note: the order these come in is soonest to latesest, that menas the appointment id is the latest
+            if i['name'] == "Candidate Id":
+                candidate_id = i['values'][0]['value']
 
-            position_id = header.find_file(candidate_id)[0][1]
-            lead_id = header.find_file(candidate_id)[0][2]
+        position_id = header.find_file(candidate_id)[0][1]
+        lead_id = header.find_file(candidate_id)[0][2]
 
-            if request.form['action'] == 'rescheduled':
-                header.addCustom(candidate_id,position_id,'Has Rescheduled','True')
-                #change the appointment dispostiion back to nil
-                empty_disposition = json.dumps({"feilds":[{"id":8806210,"value":""}]})
-                r = requests.put("https://acuityscheduling.com/api/v1/appointments/"+request.form['id'], data=empty_disposition, auth=(acuity_user_id,acuity_api_key))
-                header.jprint(r.json())
-               
-            #update breezy stage
-            header.updateStage(candidate_id,position_id,header.Interviewing)
-            header.addCustom(candidate_id,position_id,'appointment_id',request.form['id'])
-            #update ricochet status
-            header.updateStatus(lead_id,header.interview_scheduled)
-            header.update_appointment(candidate_id, request.form['id'])
-            return Response(status=200)
+        if request.form['action'] == 'rescheduled':
+            header.addCustom(candidate_id,position_id,'Has Rescheduled','True')
+            #change the appointment dispostiion back to nil
+            empty_disposition = json.dumps({"feilds":[{"id":8806210,"value":""}]})
+            r = requests.put("https://acuityscheduling.com/api/v1/appointments/"+request.form['id'], data=empty_disposition, auth=(acuity_user_id,acuity_api_key))
+            header.jprint(r.json())
+            
+        #update breezy stage
+        header.updateStage(candidate_id,position_id,header.Interviewing)
+        header.addCustom(candidate_id,position_id,'appointment_id',request.form['id'])
+        #update ricochet status
+        header.updateStatus(lead_id,header.interview_scheduled)
+        header.update_appointment(candidate_id, request.form['id'])
+        return Response(status=200)
 
-        else:
-            return Response(status=201)
+    else:
+        return Response(status=201)
 
-    except UnboundLocalError or KeyError:
-        print("Someone is missing necassary information")
-        return Response(status=401)
+    #except UnboundLocalError or KeyError:
+       # print("Someone is missing necassary information")
+       # return Response(status=401)
 
-    except IndexError:
-        print("There is some issue finding a candidate in the csv")
-        return Response(status=501)
+   # except IndexError:
+        #print("There is some issue finding a candidate in the csv")
+       # return Response(status=501)
 
 app.add_url_rule('/interviewRescheduled', 'interviewScheduled', interviewScheduled, methods=['POST'])
 
@@ -105,7 +105,7 @@ def candidateAdded():
         last_name = request.json['object']['candidate']['name'].split()[-1]
         position = request.json['object']['position']['name']
 
-        acuity_link = "https://encorsolar.as.me/?appointmentType=18537783&firstName="+first_name+"&lastName="+last_name+"&field:8821576="+candidate_id+"&phone="+breezy_candidate['phone_number']+"&email="+breezy_candidate['email_address']
+        acuity_link = "https://encorsolar.as.me/?appointmentType=18537783&firstName="+first_name+"&lastName="+last_name+"&phone="+breezy_candidate['phone_number']+"&email="+breezy_candidate['email_address']
         
         #this block of text send the info to ricochet and adds a custom attribute that is the breezy id to search for later
         ricochet_lead_values = {
@@ -157,7 +157,8 @@ def dispositionChanged():
                 candidate_id = i['values'][0]['value']
             if i['name'] == "Interview Disposition":
                 disposition = i['values'][0]['value']
-
+        
+        candidate_id = header.find_file(request.form['id'],3)[0][0]
         position_id = header.find_file(candidate_id)[0][1]
         lead_id = header.find_file(candidate_id)[0][2]
         
