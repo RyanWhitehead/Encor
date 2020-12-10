@@ -1,6 +1,8 @@
 import csv, requests, json, csv, boto3
 from datetime import datetime
 
+#testing again
+
 #The breezy dispositions
 Applied      = 'applied'
 Texting      = 1606848913927
