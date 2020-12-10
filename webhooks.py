@@ -68,7 +68,7 @@ def interviewScheduled():
             header.updateStage(candidate_id,position_id,header.Interviewing)
             header.addCustom(candidate_id,position_id,'appointment_id',request.form['id'])
             #update ricochet status
-            header.updateStatus(lead_id,"3. INTERVIEW - Scheduled")
+            header.updateStatus(lead_id,header.interview_scheduled)
             return Response(status=200)
 
         else:
@@ -182,20 +182,20 @@ def dispositionChanged():
                     no_show = True
                     if i['value'] != request.form['id']:
                         header.addCustom(candidate_id,position_id,'No Show',request.form['id'])
-                        header.updateStatus(lead_id,"3. INTERVIEW - Dropped")
+                        header.updateStatus(lead_id,header.interview_dropped)
                         print('it did the thing')
                         change = False
                 if i['name'] == 'Has Rescheduled':
                     rescheduled = True
             if no_show and rescheduled: #if they have no showed before, and have reshceduled before
                 header.addCustom(candidate_id,position_id,'No Show',request.form['id'])
-                header.updateStatus(lead_id,"3. INTERVIEW - Dropped")
+                header.updateStatus(lead_id,header.interview_dropped)
                 print('it did the thing')
                 change = False
                 
             if no_show != True:
                 header.addCustom(candidate_id,position_id,'No Show',request.form['id'])
-                header.updateStatus(lead_id,"3. INTERVIEW - No Show")
+                header.updateStatus(lead_id,header.interview_no_show)
                 stage = header.Interviewing
                 
         elif disposition == "" or disposition == "Pending":
@@ -208,7 +208,7 @@ def dispositionChanged():
         #if they have been offered and accepted
         if hired:
             print("Hired")
-            header.updateStatus(lead_id,"4. HIRED")
+            header.updateStatus(lead_id,header.hired_ric)
             header.delete_file(candidate_id)
             
         return Response(status=200)
