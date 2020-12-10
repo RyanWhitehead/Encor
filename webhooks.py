@@ -41,7 +41,7 @@ acuity_api_key = header.get_secret('acuity_api_key')
 ricochet_post_token = header.get_secret('ricochet_post_token')
 
 #TODO
-# -To my knowledge this function is complete
+# -Add the appointment id to the csv
 
 #this is the fucntion that fires everytime an interview is scheduled. all it needs to do is update the breezy
 #stage id to 'Interviewing'. this is so that we know not to text the candidate again.
@@ -69,6 +69,7 @@ def interviewScheduled():
             header.addCustom(candidate_id,position_id,'appointment_id',request.form['id'])
             #update ricochet status
             header.updateStatus(lead_id,header.interview_scheduled)
+            header.update_appointment(candidate_id, request.form['id'])
             return Response(status=200)
 
         else:
@@ -125,18 +126,19 @@ def candidateAdded():
         header.addCustom(candidate_id,position_id,'Custom Link',acuity_link)
 
         #this code saves the candidate
-        contacted_candidate = [[candidate_id,position_id,ricochet_lead_id]]
+        contacted_candidate = [[candidate_id,position_id,ricochet_lead_id,"appointment_id"]]
         header.add_file(contacted_candidate)
         
         header.updateStage(candidate_id,position_id,header.Texting)
 
         return Response(status=200)
+        
     except KeyError or IndexError:
         print("Likely someone has put in an invlaid name")
         return Response(status=400)    
 
 #TODO
-# -I think this one is all done as well
+# -Make sure to do it based on the new dispositions. Act accordingly
 
 #this is the function that triggers when anything is changed on a acuity appointment. While we don't need to know every change,
 #it is important to be able know when a disposition is change. In an ideal world, the disposition is only changed once, maybe twice
@@ -148,11 +150,14 @@ def dispositionChanged():
         hired = False
         change = True
         acuity = requests.get("https://acuityscheduling.com/api/v1/appointments/"+request.form['id'], auth=(acuity_user_id,acuity_api_key))
+
         for i in acuity.json()['forms']:
+
             if i['name'] == "Candidate Id":
                 candidate_id = i['values'][0]['value']
             if i['name'] == "Interview Disposition":
                 disposition = i['values'][0]['value']
+
         position_id = header.find_file(candidate_id)[0][1]
         lead_id = header.find_file(candidate_id)[0][2]
         
@@ -175,7 +180,7 @@ def dispositionChanged():
 
         elif disposition == "No Show": #this is a problem because of rescheduling
             no_show = False
-            rescheduled= False
+            rescheduled = False
             stage = header.Interviewing
             for i in header.get_candidate(candidate_id,position_id).json()['custom_attributes']:
                 if i['name'] == 'No Show':
@@ -242,14 +247,11 @@ def statusUpdate():
     if lead['status'] == "2. CONTACTED - Not Interested": #this is when we learn they are no longer interested over the phone
         header.unasign(lead)
 
-    elif lead['status'] == "3. INTERVIEW - Dropped": #this is when they no show twice
+    elif lead['status'] == "2. CONTACTED - Wrong Numebr": #this is when they no show twice
         header.unasign(lead)
 
     elif lead['status'] == "0. NEW - Dial": #this is when they are in theyve been texted twice
         header.updateStage(candidate_id,position_id,header.Dialing)
-
-    elif lead['status'] == "4. HIRED": #this is when they are in theyve been texted twice
-        header.updateStage(candidate_id,position_id,header.Onboarding)
     
     header.addCustom(candidate_id,position_id,'Ricochet Status',lead['status'])
     

@@ -114,9 +114,9 @@ def find_file(to_find, look_up=0):
 
         return found_rows
     
-def edit_file(to_edit, new_value,key=3):
-    change = find_file(to_edit)
-    delete_file(to_edit)
+def update_appointment(to_find, new_value,key=3):
+    change = find_file(to_find)
+    delete_file(to_find)
     change[0][key] = new_value
     add_file(change)
 
@@ -152,6 +152,7 @@ def updateStatus(lead_id, new_status):
     r = requests.post("https://ricochet.me/api/v4/leads/"+lead_id+"/status", data=body, headers=head)
     print(r)
     jprint(r.json())
+    print(new_status)
 
 def unasign(lead):
     print('woah')
