@@ -13,19 +13,18 @@ Onboarding   = 1606849114297
 Hired        = 1606849160320
 
 #the ricochet Status
-disqualified_ric = 11111
-new = 18823
-new_dial = 19050
-called_left_message = 18855
-called_no_contact = 18856
-contacted_call_back = 18859
-contacted_not_interested = 18857
-contacted_wrong_number = 18858
-interview_completed = 18863
-interview_dropped = 18862
-interview_no_show = 18861
-interview_scheduled = 18860
 hired_ric = 18864
+disqualified_ric = 19166
+interview_no_owned = 19051
+interview_no = 18861
+contacted_wrong_number = 18858
+contacted_not_interested = 18857
+contacted_interview = 18860
+contacted_call_back = 18859
+called_no_contact = 18856
+called_left_message = 18855
+new_dial = 19050
+new = 18823
 
 def get_secret(secret):
 
