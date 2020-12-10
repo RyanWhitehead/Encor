@@ -41,7 +41,7 @@ acuity_api_key = header.get_secret('acuity_api_key')
 ricochet_post_token = header.get_secret('ricochet_post_token')
 
 #TODO
-# -Add the appointment id to the csv
+# -I believe this is done
 
 #this is the fucntion that fires everytime an interview is scheduled. all it needs to do is update the breezy
 #stage id to 'Interviewing'. this is so that we know not to text the candidate again.
