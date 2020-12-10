@@ -141,7 +141,7 @@ def addCustom(candidate_id, position_id, name, value):
 
 
 def updateStatus(lead_id, new_status):
-    print("this is happeneing",lead_id,new_status)
+    print(lead_id,new_status)
     head = {
         "X-Auth-Token":"12ecb6b2de32aa386aaff01e1cd684",
         "Content-Type":"application/json"
@@ -152,7 +152,6 @@ def updateStatus(lead_id, new_status):
     r = requests.post("https://ricochet.me/api/v4/leads/"+lead_id+"/status", data=body, headers=head)
     print(r)
     jprint(r.json())
-    print(new_status)
 
 def unasign(lead):
     #get the person who wasnt contacted
