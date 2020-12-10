@@ -112,15 +112,12 @@ def candidateAdded():
             'phone': breezy_candidate['phone_number'],
             "firstName": first_name,
             'lastName':last_name,
-            'candidate_id':candidate_id,
             'acuity_link':acuity_link,
             'position':position,
             'status': "0. NEW"
             }
         
         ricochet_lead_id = requests.post('https://leads.ricochet.me/api/v1/lead/create/Breezy?token='+ricochet_post_token, data=ricochet_lead_values).json()["lead_id"]
-
-        print(ricochet_lead_id)
 
         #this adds the custom url to the candidate
         header.addCustom(candidate_id,position_id,'Custom Link',acuity_link)
@@ -163,7 +160,7 @@ def dispositionChanged():
         lead_id = header.find_file(candidate_id)[0][2]
         
         print(candidate_id,position_id,disposition)
-        if request.form['action'] == changed:
+        if request.form['action'] == 'changed':
             #get the correct pipleine stage based off of the disposistion
             if disposition == "Offer Made - Accepted":
                 stage = header.Onboarding
