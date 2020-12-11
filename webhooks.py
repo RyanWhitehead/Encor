@@ -49,40 +49,49 @@ ricochet_post_token = header.get_secret('ricochet_post_token')
 #stage id to 'Interviewing'. this is so that we know not to text the candidate again.
 @app.route('/interviewScheduled', methods=['POST'])
 def interviewScheduled():
-    #try:
-    if request.form['action'] == 'scheduled' or request.form['action'] == 'rescheduled':
-        acuity = requests.get("https://acuityscheduling.com/api/v1/appointments/"+request.form['id'], auth=(acuity_user_id,acuity_api_key))
-        for i in acuity.json()['forms']: #Note: the order these come in is soonest to latesest, that menas the appointment id is the latest
-            if i['name'] == "Candidate Id":
-                candidate_id = i['values'][0]['value']
+    try:
+        if request.form['action'] == 'scheduled' or request.form['action'] == 'rescheduled':
+            acuity = requests.get("https://acuityscheduling.com/api/v1/appointments/"+request.form['id'], auth=(acuity_user_id,acuity_api_key))
+            for i in acuity.json()['forms']: #Note: the order these come in is soonest to latesest, that menas the appointment id is the latest
+                if i['name'] == "Candidate Id":
+                    candidate_id = i['values'][0]['value']
 
-        position_id = header.find_file(candidate_id)[0][1]
-        lead_id = header.find_file(candidate_id)[0][2]
+            position_id = header.find_file(candidate_id)[0][1]
+            lead_id = header.find_file(candidate_id)[0][2]
 
-        if request.form['action'] == 'rescheduled':
-            header.addCustom(candidate_id,position_id,'Has Rescheduled','True')
-            #change the appointment dispostiion back to nil
-            empty_disposition = json.dumps({"feilds":[{"id":8806210,"value":""}]})
-            r = requests.put("https://acuityscheduling.com/api/v1/appointments/"+request.form['id'], data=empty_disposition, auth=(acuity_user_id,acuity_api_key))
-            header.jprint(r.json())
-            
-        #update breezy stage
-        header.updateStage(candidate_id,position_id,header.Interviewing)
-        header.addCustom(candidate_id,position_id,'appointment_id',request.form['id'])
-        #update ricochet status
-        header.updateStatus(lead_id,header.contacted_interview)
-        return Response(status=200)
+            if request.form['action'] == 'rescheduled':
+                header.addCustom(candidate_id,position_id,'Has Rescheduled','True')
+                head = {"Content-Type":"application/json"}
+                #change the appointment dispostiion back to nil
+                empty_disposition = json.dumps({
+                    'firstName':'Nshow',
+                    'feilds':[
+                        {
+                        "id":1599772,
+                        'value':"Pending"
+                        }
+                    ]
+                })
+                r = requests.put("https://acuityscheduling.com/api/v1/appointments/"+request.form['id'], data=empty_disposition, auth=(acuity_user_id,acuity_api_key),headers=head)
+                header.jprint(r.json())
+                
+            #update breezy stage
+            header.updateStage(candidate_id,position_id,header.Interviewing)
+            header.addCustom(candidate_id,position_id,'appointment_id',request.form['id'])
+            #update ricochet status
+            header.updateStatus(lead_id,header.contacted_interview)
+            return Response(status=200)
 
-    else:
-        return Response(status=201)
+        else:
+            return Response(status=201)
 
-    #except UnboundLocalError or KeyError:
-       # print("Someone is missing necassary information")
-       # return Response(status=401)
+    except UnboundLocalError or KeyError:
+       print("Someone is missing necassary information")
+       return Response(status=401)
 
-   # except IndexError:
-        #print("There is some issue finding a candidate in the csv")
-       # return Response(status=501)
+    except IndexError:
+        print("There is some issue finding a candidate in the csv")
+        return Response(status=501)
 
 app.add_url_rule('/interviewRescheduled', 'interviewScheduled', interviewScheduled, methods=['POST'])
 
@@ -152,68 +161,67 @@ def candidateAdded():
 #it should only do things when the disposition is changed and this should only happen at the end of an interview.
 @app.route('/dispositionChanged', methods=['POST'])
 def dispositionChanged():
-    #try:
-    #take the appointment and get the breezy id out of it
-    acuity = requests.get("https://acuityscheduling.com/api/v1/appointments/"+request.form['id'], auth=(acuity_user_id,acuity_api_key))
+    try:
+        #take the appointment and get the breezy id out of it
+        acuity = requests.get("https://acuityscheduling.com/api/v1/appointments/"+request.form['id'], auth=(acuity_user_id,acuity_api_key))
 
-    for i in acuity.json()['forms']:
-        if i['name'] == "Candidate Id":
-            candidate_id = i['values'][0]['value']
-        if i['name'] == "Interview Disposition":
-            disposition = i['values'][0]['value']
-    
-    position_id = header.find_file(candidate_id)[0][1]
-    lead_id = header.find_file(candidate_id)[0][2]
-    
-    print(candidate_id,position_id,disposition)
-    if request.form['action'] == 'changed':
-        #get the correct pipleine stage based off of the disposistion
-        if disposition == "Offer Made - Accepted": #Offer Accepted
-            header.updateStage(candidate_id,position_id,header.Onboarding)
-            header.updateStatus(lead_id,header.hired_ric)
-            
-        elif disposition == "Offer Made - Not Accepted": #Offer Declined
-            header.offbaord(candidate_id,"Offer Made - Not Accepted")
-            
-        elif disposition == "Not Offered": #Disqualified
-            header.offbaord(candidate_id,"Not Offered")
-
-        #this needs to know a few things, did they schedule from a text or were they called (I can check this by seeing if they were in a contacted status previousely), if they were 
-        # called, put them into noshow(owned) otherwise if they noshow an interview, and were never in a contact status put them in the noshow status. second, have they no 
-        # showed an interview before, if they have and are doing it again, we need to update their breezy to disqaulifed as well as ricochet.
-        elif disposition == "No Show": #this is a problem because of rescheduling
-            no_show = False
-            rescheduled = False
-            stage = header.Interviewing
-            for i in header.get_candidate(candidate_id,position_id).json()['custom_attributes']:
-                if i['name'] == 'No Show':
-                    no_show = True
-                    if i['value'] != request.form['id']:
-                        header.addCustom(candidate_id,position_id,'No Show',request.form['id'])
-                        header.updateStatus(lead_id,header.disqualified_ric)
-                if i['name'] == 'Has Rescheduled':
-                    rescheduled = True
-            if no_show and rescheduled: #if they have no showed before, and have reshceduled before
-                header.addCustom(candidate_id,position_id,'No Show',request.form['id'])
-                header.updateStatus(lead_id,header.interview_no)
+        for i in acuity.json()['forms']:
+            if i['name'] == "Candidate Id":
+                candidate_id = i['values'][0]['value']
+            if i['name'] == "Interview Disposition":
+                disposition = i['values'][0]['value']
+        
+        position_id = header.find_file(candidate_id)[0][1]
+        lead_id = header.find_file(candidate_id)[0][2]
+        
+        print(candidate_id,position_id,disposition)
+        if request.form['action'] == 'changed':
+            #get the correct pipleine stage based off of the disposistion
+            if disposition == "Offer Made - Accepted": #Offer Accepted
+                header.updateStage(candidate_id,position_id,header.Onboarding)
+                header.updateStatus(lead_id,header.hired_ric)
                 
-            if no_show != True:
-                header.addCustom(candidate_id,position_id,'No Show',request.form['id'])
-                header.updateStatus(lead_id,header.interview_no)
-                stage = header.Interviewing
+            elif disposition == "Offer Made - Not Accepted": #Offer Declined
+                header.offbaord(candidate_id,"Offer Made - Not Accepted")
+                
+            elif disposition == "Not Offered": #Disqualified
+                header.offbaord(candidate_id,"Not Offered")
 
-        elif disposition == "Offer Pending" or disposition == "Pending":
-            pass
+            #this needs to know a few things, did they schedule from a text or were they called (I can check this by seeing if they were in a contacted status previousely), if they were 
+            # called, put them into noshow(owned) otherwise if they noshow an interview, and were never in a contact status put them in the noshow status. second, have they no 
+            # showed an interview before, if they have and are doing it again, we need to update their breezy to disqaulifed as well as ricochet.
+            elif disposition == "No Show": #this is a problem because of rescheduling
+                no_show = False
+                rescheduled = False
+                for i in header.get_candidate(candidate_id,position_id).json()['custom_attributes']:
+                    if i['name'] == 'No Show':
+                        no_show = True
+                        if i['value'] != request.form['id']:
+                            header.addCustom(candidate_id,position_id,'No Show',request.form['id'])
+                            header.updateStatus(lead_id,header.disqualified_ric)
+                    if i['name'] == 'Has Rescheduled':
+                        rescheduled = True
+                if no_show and rescheduled: #if they have no showed before, and have reshceduled before
+                    header.addCustom(candidate_id,position_id,'No Show',request.form['id'])
+                    header.updateStatus(lead_id,header.interview_no)
+                    
+                if no_show != True:
+                    header.addCustom(candidate_id,position_id,'No Show',request.form['id'])
+                    header.updateStatus(lead_id,header.interview_no)
+                    stage = header.Interviewing
 
-        return Response(status=200)
-    else:
-        return Response(status=201)
-    #except UnboundLocalError or KeyError:
-        #print("Someone is missing necassary information")
-        #return Response(status=401)
-    #except IndexError:
-        #print("There is some issue finding a candidate in the csv")
-        #return Response(status=501)
+            elif disposition == "Offer Pending" or disposition == "Pending":
+                pass
+
+            return Response(status=200)
+        else:
+            return Response(status=201)
+    except UnboundLocalError or KeyError:
+        print("Someone is missing necassary information")
+        return Response(status=401)
+    except IndexError:
+        print("There is some issue finding a candidate in the csv")
+        return Response(status=501)
     
 
 #TODO
@@ -226,30 +234,37 @@ def dispositionChanged():
 #everything in here just in case
 @app.route("/statusUpdated", methods=["POST"])
 def statusUpdate():
-    lead = request.json
-    header.jprint(lead)
+    try:
+        lead = request.json
+        header.jprint(lead)
 
-    lead_id = lead['id']
-    candidate_id = header.find_file(lead_id,2)[0][0]
-    position_id = header.find_file(lead_id,2)[0][1]
+        lead_id = lead['id']
+        candidate_id = header.find_file(lead_id,2)[0][0]
+        position_id = header.find_file(lead_id,2)[0][1]
 
-    header.addCustom(candidate_id,position_id,'Ricochet Status',lead['status'])
-   
-    if lead['status'] == "2. CONTACTED - Not Interested": #this is when we learn they are no longer interested over the phone
-        header.offbaord(candidate_id, lead['status'])
-        header.updateStatus(lead_id,header.disqualified_ric)
-
-    elif lead['status'] == "2. CONTACTED - Wrong Numebr": #this is when they no show twice
-        header.offbaord(candidate_id, lead['status'])
-        header.updateStatus(lead_id,header.disqualified_ric)
-
-    elif lead['status'] == "0. NEW - Dial": #this is when they are in theyve been texted twice
-        header.updateStage(candidate_id,position_id,header.Dialing)
+        header.addCustom(candidate_id,position_id,'Ricochet Status',lead['status'])
     
-    elif lead['status'] == "4. DISQUALIFIED":#when they hit an endpoint, delete them from the csv
-        header.delete_file(candidate_id)
-    
-    return Response(status=200)
+        if lead['status'] == "2. CONTACTED - Not Interested": #this is when we learn they are no longer interested over the phone
+            header.offbaord(candidate_id, lead['status'])
+            header.updateStatus(lead_id,header.disqualified_ric)
+
+        elif lead['status'] == "2. CONTACTED - Wrong Numebr": #this is when they no show twice
+            header.offbaord(candidate_id, lead['status'])
+            header.updateStatus(lead_id,header.disqualified_ric)
+
+        elif lead['status'] == "0. NEW - Dial": #this is when they are in theyve been texted twice
+            header.updateStage(candidate_id,position_id,header.Dialing)
+        
+        elif lead['status'] == "4. DISQUALIFIED":#when they hit an endpoint, delete them from the csv
+            header.delete_file(candidate_id)
+        
+        return Response(status=200)
+    except KeyError:
+        print("Some necassary info is missing")
+        return Response(status=401)
+    except IndexError:
+        print("There is some issue finding a candidate in the csv")
+        return Response(status=501)
 
 #this just runs the code on port 80, and will accept info form anyone (unofrtuantly this is necsassry
 #to get the webhooks from the different sites.)
