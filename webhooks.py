@@ -154,8 +154,6 @@ def candidateAdded():
 def dispositionChanged():
     #try:
     #take the appointment and get the breezy id out of it
-    hired = False
-    change = True
     acuity = requests.get("https://acuityscheduling.com/api/v1/appointments/"+request.form['id'], auth=(acuity_user_id,acuity_api_key))
 
     for i in acuity.json()['forms']:
@@ -170,20 +168,22 @@ def dispositionChanged():
     print(candidate_id,position_id,disposition)
     if request.form['action'] == 'changed':
         #get the correct pipleine stage based off of the disposistion
-        if disposition == "Offer Made - Accepted":
-            stage = header.Onboarding
-            hired = True
-            
-        elif disposition == "Offer Made - Not Accepted":
-            stage = header.Disqualified
+        if disposition == "Offer Made - Accepted": #Offer Accepted
+            header.updateStage(candidate_id,position_id,header.Onboarding)
+            header.updateStatus(lead_id,header.hired_ric)
             header.delete_file(candidate_id)
+            
+        elif disposition == "Offer Made - Not Accepted": #Offer Declined
+            header.updateStage(candidate_id,position_id,header.Disqualified)
+            header.updateStatus(lead_id,header.disqualified_ric)
             header.addCustom(candidate_id,position_id,'Discard Reason','Offer Made - Not Accepted')
-            
-        elif disposition == "Not Offered":
-            stage = header.Disqualified
             header.delete_file(candidate_id)
+            
+        elif disposition == "Not Offered": #Disqualified
+            header.updateStage(candidate_id,position_id,header.Disqualified)
+            header.updateStatus(lead_id,header.disqualified_ric)
             header.addCustom(candidate_id,position_id,'Discard Reason','Not Offered')
-
+            header.delete_file(candidate_id)
 
         #this needs to know a few things, did they schedule from a text or were they called (I can check this by seeing if they were in a contacted status previousely), if they were 
         # called, put them into noshow(owned) otherwise if they noshow an interview, and were never in a contact status put them in the noshow status. second, have they no 
@@ -198,34 +198,20 @@ def dispositionChanged():
                     if i['value'] != request.form['id']:
                         header.addCustom(candidate_id,position_id,'No Show',request.form['id'])
                         header.updateStatus(lead_id,header.disqualified_ric)
-                        print('it did the thing')
-                        change = False
                 if i['name'] == 'Has Rescheduled':
                     rescheduled = True
             if no_show and rescheduled: #if they have no showed before, and have reshceduled before
                 header.addCustom(candidate_id,position_id,'No Show',request.form['id'])
                 header.updateStatus(lead_id,header.interview_no)
-                print('it did the thing')
-                change = False
                 
             if no_show != True:
                 header.addCustom(candidate_id,position_id,'No Show',request.form['id'])
                 header.updateStatus(lead_id,header.interview_no)
                 stage = header.Interviewing
-                
-        elif disposition == "" or disposition == "Pending":
-            change = False
 
-        #update breezy with the crroect pipleine stage
-        if change:
-            header.updateStage(candidate_id,position_id,stage)
+        elif disposition == "Offer Pending" or disposition == "Pending":
+            pass
 
-        #if they have been offered and accepted
-        if hired:
-            print("Hired")
-            header.updateStatus(lead_id,header.hired_ric)
-            header.delete_file(candidate_id)
-            
         return Response(status=200)
     else:
         return Response(status=201)
@@ -253,15 +239,13 @@ def statusUpdate():
     lead_id = lead['id']
     candidate_id = header.find_file(lead_id,2)[0][0]
     position_id = header.find_file(lead_id,2)[0][1]
-
-    print(candidate_id,position_id)
    
     if lead['status'] == "2. CONTACTED - Not Interested": #this is when we learn they are no longer interested over the phone
-        header.unasign(lead)
+        header.offbaord(candidate_id, lead['status'])
         header.updateStatus(lead_id,header.disqualified_ric)
 
     elif lead['status'] == "2. CONTACTED - Wrong Numebr": #this is when they no show twice
-        header.unasign(lead)
+        header.offbaord(candidate_id, lead['status'])
         header.updateStatus(lead_id,header.disqualified_ric)
 
     elif lead['status'] == "0. NEW - Dial": #this is when they are in theyve been texted twice

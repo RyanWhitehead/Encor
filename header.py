@@ -153,13 +153,14 @@ def updateStatus(lead_id, new_status):
     print(r)
     jprint(r.json())
 
-def unasign(lead):
+def offbaord(candidate_id, reason):
     #get the person who wasnt contacted
-    candidate_id = lead['candidate_id']
     position_id = find_file(candidate_id)[0][1]
+    lead_id = find_file(candidate_id)[0][2]
     #update their stage to whatever, and delete them from the csv
-    addCustom(candidate_id,position_id,'Discard Reason',lead['status'])
+    addCustom(candidate_id,position_id,'Discard Reason',reason)
     updateStage(candidate_id,position_id,Disqualified)
+    updateStatus(lead_id, disqualified_ric)
     #drop them from the csv
     delete_file(candidate_id)
     
