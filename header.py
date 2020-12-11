@@ -143,7 +143,7 @@ def addCustom(candidate_id, position_id, name, value):
 def updateStatus(lead_id, new_status):
     print(lead_id,new_status)
     head = {
-        "X-Auth-Token":"12ecb6b2de32aa386aaff01e1cd684",
+        "X-Auth-Token":get_secret('ricochet_user_token'),
         "Content-Type":"application/json"
         }
     body = json.dumps({
