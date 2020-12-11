@@ -15,9 +15,6 @@
 ##     -Log errors to a csv
 ##
 ##     -Get this to run on reboot
-##
-##     -Get rid of them when they are deleted
-
 
 from flask import Flask, request, Response, json
 import header
