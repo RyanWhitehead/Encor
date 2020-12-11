@@ -61,18 +61,16 @@ def interviewScheduled():
 
             if request.form['action'] == 'rescheduled':
                 header.addCustom(candidate_id,position_id,'Has Rescheduled','True')
-                head = {"Content-Type":"application/json"}
                 #change the appointment dispostiion back to nil
                 empty_disposition = json.dumps({
-                    'firstName':'Nshow',
                     'feilds':[
                         {
-                        "id":1599772,
+                        "id":8806210,
                         'value':"Pending"
                         }
                     ]
                 })
-                r = requests.put("https://acuityscheduling.com/api/v1/appointments/"+request.form['id'], data=empty_disposition, auth=(acuity_user_id,acuity_api_key),headers=head)
+                r = requests.put("https://acuityscheduling.com/api/v1/appointments/"+request.form['id'], data=empty_disposition, auth=(acuity_user_id,acuity_api_key))
                 header.jprint(r.json())
                 
             #update breezy stage
@@ -203,12 +201,10 @@ def dispositionChanged():
                         rescheduled = True
                 if no_show and rescheduled: #if they have no showed before, and have reshceduled before
                     header.addCustom(candidate_id,position_id,'No Show',request.form['id'])
-                    header.updateStatus(lead_id,header.interview_no)
+                    header.updateStatus(lead_id,header.disqualified_ric)
                     
                 if no_show != True:
                     header.addCustom(candidate_id,position_id,'No Show',request.form['id'])
-                    header.updateStatus(lead_id,header.interview_no)
-                    stage = header.Interviewing
 
             elif disposition == "Offer Pending" or disposition == "Pending":
                 pass
