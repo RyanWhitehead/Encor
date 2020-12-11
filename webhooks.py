@@ -19,6 +19,8 @@
 ##     -Log errors to a csv
 ##
 ##     -Get this to run on reboot
+##
+##     -Get rid of them when they are deleted
 
 
 from flask import Flask, request, Response, json
@@ -102,13 +104,22 @@ def candidateAdded():
         
         first_name = request.json['object']['candidate']['name'].split()[0]
         last_name = request.json['object']['candidate']['name'].split()[-1]
+        if first_name == last_name:
+            last_name = ""
         position = request.json['object']['position']['name']
+        phone_number = ""
+        email_address = ""
+        for i in breezy_candidate:
+            if i == 'phone_number':
+                phone_number = breezy_candidate[i]
+            if i == 'email_address':
+                email_address = breezy_candidate[i]
 
-        acuity_link =  "https://encorsolar.as.me/?appointmentType=18537783&firstName="+first_name+"&lastName="+last_name+"&field:8821576="+candidate_id+"&phone="+breezy_candidate['phone_number']+"&email="+breezy_candidate['email_address']
+        acuity_link =  "https://encorsolar.as.me/?appointmentType=18537783&firstName="+first_name+"&lastName="+last_name+"&field:8821576="+candidate_id+"&phone="+phone_number+"&email="+email_address
         
         #this block of text send the info to ricochet and adds a custom attribute that is the breezy id to search for later
         ricochet_lead_values = {
-            'phone': breezy_candidate['phone_number'],
+            'phone': phone_number,
             "firstName": first_name,
             'lastName':last_name,
             'acuity_link':acuity_link,
@@ -130,7 +141,7 @@ def candidateAdded():
         return Response(status=200)
         
     except KeyError or IndexError:
-        print("Likely someone has put in an invlaid name")
+        print("Someone managed to put something invalid")
         return Response(status=400)    
 
 #TODO
