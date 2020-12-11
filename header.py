@@ -146,9 +146,9 @@ def updateStatus(lead_id, new_status):
         "X-Auth-Token":"12ecb6b2de32aa386aaff01e1cd684",
         "Content-Type":"application/json"
         }
-    body = {
+    body = json.dumps({
         "status_id": new_status
-        }
+        })
     r = requests.post("https://ricochet.me/api/v4/leads/"+lead_id+"/status", data=body, headers=head)
     print(r)
     jprint(r.json())
