@@ -174,16 +174,10 @@ def dispositionChanged():
             header.delete_file(candidate_id)
             
         elif disposition == "Offer Made - Not Accepted": #Offer Declined
-            header.updateStage(candidate_id,position_id,header.Disqualified)
-            header.updateStatus(lead_id,header.disqualified_ric)
-            header.addCustom(candidate_id,position_id,'Discard Reason','Offer Made - Not Accepted')
-            header.delete_file(candidate_id)
+            header.offbaord(candidate_id,"Offer Made - Not Accepted")
             
         elif disposition == "Not Offered": #Disqualified
-            header.updateStage(candidate_id,position_id,header.Disqualified)
-            header.updateStatus(lead_id,header.disqualified_ric)
-            header.addCustom(candidate_id,position_id,'Discard Reason','Not Offered')
-            header.delete_file(candidate_id)
+            header.offbaord(candidate_id,"Not Offered")
 
         #this needs to know a few things, did they schedule from a text or were they called (I can check this by seeing if they were in a contacted status previousely), if they were 
         # called, put them into noshow(owned) otherwise if they noshow an interview, and were never in a contact status put them in the noshow status. second, have they no 
