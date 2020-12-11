@@ -161,6 +161,4 @@ def offbaord(candidate_id, reason):
     addCustom(candidate_id,position_id,'Discard Reason',reason)
     updateStage(candidate_id,position_id,Disqualified)
     updateStatus(lead_id, disqualified_ric)
-    #drop them from the csv
-    delete_file(candidate_id)
     

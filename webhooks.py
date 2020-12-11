@@ -104,7 +104,7 @@ def candidateAdded():
         
         first_name = request.json['object']['candidate']['name'].split()[0]
         last_name = request.json['object']['candidate']['name'].split()[-1]
-        if first_name == last_name:
+        if " " not in request.json['object']['candidate']['name']:
             last_name = ""
         position = request.json['object']['position']['name']
         phone_number = ""
@@ -171,7 +171,6 @@ def dispositionChanged():
         if disposition == "Offer Made - Accepted": #Offer Accepted
             header.updateStage(candidate_id,position_id,header.Onboarding)
             header.updateStatus(lead_id,header.hired_ric)
-            header.delete_file(candidate_id)
             
         elif disposition == "Offer Made - Not Accepted": #Offer Declined
             header.offbaord(candidate_id,"Offer Made - Not Accepted")
@@ -233,6 +232,8 @@ def statusUpdate():
     lead_id = lead['id']
     candidate_id = header.find_file(lead_id,2)[0][0]
     position_id = header.find_file(lead_id,2)[0][1]
+
+    header.addCustom(candidate_id,position_id,'Ricochet Status',lead['status'])
    
     if lead['status'] == "2. CONTACTED - Not Interested": #this is when we learn they are no longer interested over the phone
         header.offbaord(candidate_id, lead['status'])
@@ -245,7 +246,8 @@ def statusUpdate():
     elif lead['status'] == "0. NEW - Dial": #this is when they are in theyve been texted twice
         header.updateStage(candidate_id,position_id,header.Dialing)
     
-    header.addCustom(candidate_id,position_id,'Ricochet Status',lead['status'])
+    elif lead['status'] == "4. DISQUALIFIED":#when they hit an endpoint, delete them from the csv
+        header.delete_file(candidate_id)
     
     return Response(status=200)
 
