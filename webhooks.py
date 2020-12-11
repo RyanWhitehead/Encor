@@ -4,13 +4,9 @@
 ##by a speciifc function and a specific route.
 
 ## TODO
-##     -get the post urls for updating status
-##
 ##     -If someone is hired, add them to paylocity
 ##
 ##     -Retry logic
-##
-##     -error handling
 ##
 ##     -if I were to run this for a month the brezzy thing would loose auth
 ##
@@ -232,7 +228,6 @@ def dispositionChanged():
 def statusUpdate():
     try:
         lead = request.json
-        header.jprint(lead)
 
         lead_id = lead['id']
         candidate_id = header.find_file(lead_id,2)[0][0]
