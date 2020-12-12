@@ -77,16 +77,20 @@ def interviewScheduled():
         else:
             return Response(status=201)
 
-    except UnboundLocalError or KeyError:
-       print("Someone is missing necassary information" + sys.exc_info()[0])
+    except UnboundLocalError:
+       print("Someone is missing necassary information")
+       return Response(status=401)
+
+    except KeyError:
+       print("Someone is missing necassary information")
        return Response(status=401)
 
     except IndexError:
-        print("There is some issue finding a candidate in the csv" + sys.exc_info()[0])
+        print("There is some issue finding a candidate in the csv")
         return Response(status=501)
 
     except:
-        logging.error("Unexpected error:" + sys.exc_info()[0])  
+        logging.error("Unexpected error:")  
         return Response(status=500)
 
 app.add_url_rule('/interviewRescheduled', 'interviewScheduled', interviewScheduled, methods=['POST'])
@@ -145,11 +149,14 @@ def candidateAdded():
 
         return Response(status=200)
         
-    except KeyError or IndexError:
-        logging.error("Someone managed to put something invalid" + sys.exc_info()[0])
+    except IndexError:
+        logging.error("Someone managed to put something invalid")
+        return Response(status=400)
+    except KeyError:
+        logging.error("Someone managed to put something invalid")
         return Response(status=400)
     except:
-        logging.error("Unexpected error:" + sys.exc_info()[0])  
+        logging.error("Unexpected error:")  
         return Response(status=500)
 
 #TODO
@@ -196,13 +203,11 @@ def dispositionChanged():
                     if i['name'] == 'No Show':
                         no_show = True
                         if i['value'] != request.form['id']:
-                            header.addCustom(candidate_id,position_id,'No Show',request.form['id'])
-                            header.updateStatus(lead_id,header.disqualified_ric)
+                            header.offbaord(candidate_id,"No Showed Twice")
                     if i['name'] == 'Has Rescheduled':
                         rescheduled = True
                 if no_show and rescheduled: #if they have no showed before, and have reshceduled before
-                    header.addCustom(candidate_id,position_id,'No Show',request.form['id'])
-                    header.updateStatus(lead_id,header.disqualified_ric)
+                    header.offbaord(candidate_id,"No Showed Twice")
                     
                 if no_show != True:
                     header.addCustom(candidate_id,position_id,'No Show',request.form['id'])
@@ -214,14 +219,17 @@ def dispositionChanged():
         else:
             return Response(status=201)
 
-    except UnboundLocalError or KeyError:
-        logging.error("Someone is missing necassary information" + sys.exc_info()[0])
+    except KeyError:
+        logging.error("Someone is missing necassary information")
+        return Response(status=401)
+    except UnboundLocalError:
+        logging.error("Someone is missing necassary information")
         return Response(status=401)
     except IndexError:
-        logging.error("There is some issue finding a candidate in the csv" + sys.exc_info()[0])
+        logging.error("There is some issue finding a candidate in the csv")
         return Response(status=501)
     except:
-        logging.error("Unexpected error:" + sys.exc_info()[0])  
+        logging.error("Unexpected error:")  
         return Response(status=500)
     
 
@@ -260,13 +268,13 @@ def statusUpdate():
         
         return Response(status=200)
     except KeyError:
-        logging.error("Some necassary info is missing" + sys.exc_info()[0])
+        logging.error("Some necassary info is missing")
         return Response(status=401)
     except IndexError:
-        logging.error("There is some issue finding a candidate in the csv" + sys.exc_info()[0])
+        logging.error("There is some issue finding a candidate in the csv")
         return Response(status=501)
     except:
-        logging.error("Unexpected error:" + sys.exc_info()[0])  
+        logging.error("Unexpected error:")  
         return Response(status=500)
 
 #this just runs the code on port 80, and will accept info form anyone (unofrtuantly this is necsassry
