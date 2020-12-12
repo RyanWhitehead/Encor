@@ -1,4 +1,4 @@
-import csv, requests, json, csv, boto3
+import csv, requests, json, csv, boto3, logging
 from datetime import datetime
 
 #testing again
@@ -25,6 +25,10 @@ called_no_contact = 18856
 called_left_message = 18855
 new_dial = 19050
 new = 18823
+logging.basicConfig(filename='/home/ubuntu/DEBUG.log', level=logging.DEBUG)
+for name in ['boto', 'urllib3', 's3transfer', 'boto3', 'botocore', 'nose']:
+    logging.getLogger(name).setLevel(logging.CRITICAL)
+logger = logging.getLogger(__name__)
 
 def get_secret(secret):
 
@@ -55,7 +59,7 @@ def jprint(obj):
 
 #wirte
 def write_file(file):
-    write_file = open('uncontacted_candidates.csv', 'w')
+    write_file = open('/home/ubuntu/uncontacted_candidates.csv', 'w')
 
     with write_file:
         writer = csv.writer(write_file)
@@ -65,7 +69,7 @@ def write_file(file):
 
 #add
 def add_file(row):
-    add_file = open('uncontacted_candidates.csv', 'a')
+    add_file = open('/home/ubuntu/uncontacted_candidates.csv', 'a')
 
     with add_file:
         writer = csv.writer(add_file)
@@ -78,7 +82,7 @@ def delete_file(to_delete, look_up=0):
     found = False
     lines = []
     deleted = []
-    delete_file = open('uncontacted_candidates.csv', 'r')    
+    delete_file = open('/home/ubuntu/uncontacted_candidates.csv', 'r')    
     with delete_file:
 
         reader = csv.reader(delete_file)
@@ -100,7 +104,7 @@ def delete_file(to_delete, look_up=0):
 def find_file(to_find, look_up=0):
     found = False
     found_rows = []
-    find_file = open('uncontacted_candidates.csv', 'r')    
+    find_file = open('/home/ubuntu/uncontacted_candidates.csv', 'r')    
     with find_file:
 
         reader = csv.reader(find_file)

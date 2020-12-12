@@ -6,20 +6,21 @@
 ## TODO
 ##     -If someone is hired, add them to paylocity
 ##
-##     -Retry logic
-##
 ##     -if I were to run this for a month the brezzy thing would loose auth
 ##
 ##     -Think about exporting to an excel for reporting
 ##
-##     -Log errors to a csv
-##
-##     -Get this to run on reboot
+##     -Set disposition back to nil when recheduled
 
 from flask import Flask, request, Response, json
 import header
-import requests, boto3, json
+import requests, boto3, json, tenacity, logging, sys
 from datetime import datetime
+
+logging.basicConfig(filename='/home/ubuntu/DEBUG.log', level=logging.DEBUG)
+for name in ['boto', 'urllib3', 's3transfer', 'boto3', 'botocore', 'nose']:
+    logging.getLogger(name).setLevel(logging.CRITICAL)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
@@ -77,12 +78,16 @@ def interviewScheduled():
             return Response(status=201)
 
     except UnboundLocalError or KeyError:
-       print("Someone is missing necassary information")
+       print("Someone is missing necassary information" + sys.exc_info()[0])
        return Response(status=401)
 
     except IndexError:
-        print("There is some issue finding a candidate in the csv")
+        print("There is some issue finding a candidate in the csv" + sys.exc_info()[0])
         return Response(status=501)
+
+    except:
+        logging.error("Unexpected error:" + sys.exc_info()[0])  
+        return Response(status=500)
 
 app.add_url_rule('/interviewRescheduled', 'interviewScheduled', interviewScheduled, methods=['POST'])
 
@@ -141,8 +146,11 @@ def candidateAdded():
         return Response(status=200)
         
     except KeyError or IndexError:
-        print("Someone managed to put something invalid")
-        return Response(status=400)    
+        logging.error("Someone managed to put something invalid" + sys.exc_info()[0])
+        return Response(status=400)
+    except:
+        logging.error("Unexpected error:" + sys.exc_info()[0])  
+        return Response(status=500)
 
 #TODO
 # -Make sure to do it based on the new dispositions. Act accordingly
@@ -205,12 +213,16 @@ def dispositionChanged():
             return Response(status=200)
         else:
             return Response(status=201)
+
     except UnboundLocalError or KeyError:
-        print("Someone is missing necassary information")
+        logging.error("Someone is missing necassary information" + sys.exc_info()[0])
         return Response(status=401)
     except IndexError:
-        print("There is some issue finding a candidate in the csv")
+        logging.error("There is some issue finding a candidate in the csv" + sys.exc_info()[0])
         return Response(status=501)
+    except:
+        logging.error("Unexpected error:" + sys.exc_info()[0])  
+        return Response(status=500)
     
 
 #TODO
@@ -248,11 +260,14 @@ def statusUpdate():
         
         return Response(status=200)
     except KeyError:
-        print("Some necassary info is missing")
+        logging.error("Some necassary info is missing" + sys.exc_info()[0])
         return Response(status=401)
     except IndexError:
-        print("There is some issue finding a candidate in the csv")
+        logging.error("There is some issue finding a candidate in the csv" + sys.exc_info()[0])
         return Response(status=501)
+    except:
+        logging.error("Unexpected error:" + sys.exc_info()[0])  
+        return Response(status=500)
 
 #this just runs the code on port 80, and will accept info form anyone (unofrtuantly this is necsassry
 #to get the webhooks from the different sites.)
