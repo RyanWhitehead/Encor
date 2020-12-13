@@ -8,9 +8,13 @@
 ##
 ##     -if I were to run this for a month the brezzy thing would loose auth
 ##
-##     -Think about exporting to an excel for reporting
-##
 ##     -Figure out the best mehtod for deploying
+##
+##     -Have the log stop filling at 10mb, and start a new one
+##
+##     -Make a new refresh, stronger, better, faster
+##
+##     -Get rid of candidates in csv if they are deleted in breezy
 
 from flask import Flask, request, Response, json
 import header
