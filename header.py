@@ -25,6 +25,7 @@ called_no_contact = 18856
 called_left_message = 18855
 new_dial = 19050
 new = 18823
+
 logging.basicConfig(filename='/home/ubuntu/DEBUG.log', level=logging.DEBUG)
 for name in ['boto', 'urllib3', 's3transfer', 'boto3', 'botocore', 'nose']:
     logging.getLogger(name).setLevel(logging.CRITICAL)
@@ -50,8 +51,6 @@ breezy_company_id = get_secret('breezy_company_id')
 
 acuity_user_id = get_secret('acuity_user_id')
 acuity_api_key = get_secret('acuity_api_key')
-
-
 
 def jprint(obj):
 	text = json.dumps(obj, sort_keys=True, indent=4)
@@ -117,12 +116,6 @@ def find_file(to_find, look_up=0):
                     found = True
 
         return found_rows
-    
-def update_appointment(to_find, new_value,key=3):
-    change = find_file(to_find)
-    delete_file(to_find)
-    change[0][key] = new_value
-    add_file(change)
 
 def get_candidate(candidate_id,position_id):
     breezy_candidate_url = 'https://api.breezy.hr/v3/company/'+breezy_company_id+'/position/'+position_id+'/candidate/'+candidate_id
