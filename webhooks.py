@@ -10,12 +10,13 @@
 ##
 ##     -Think about exporting to an excel for reporting
 ##
-##     -Set disposition back to nil when recheduled
+##     -Figure out the best mehtod for deploying
 
 from flask import Flask, request, Response, json
 import header
 import requests, boto3, json, tenacity, logging, sys
 from datetime import datetime
+from logging.handlers import RotatingFileHandler
 
 logging.basicConfig(filename='/home/ubuntu/DEBUG.log', level=logging.DEBUG)
 for name in ['boto', 'urllib3', 's3transfer', 'boto3', 'botocore', 'nose']:
@@ -57,15 +58,16 @@ def interviewScheduled():
                 header.addCustom(candidate_id,position_id,'Has Rescheduled','True')
                 #change the appointment dispostiion back to nil
                 empty_disposition = json.dumps({
-                    'feilds':[
+                    'firstName':'test',
+                    'fields':[
                         {
                         "id":8806210,
-                        'value':"Pending"
+                        'value':""
                         }
                     ]
                 })
                 r = requests.put("https://acuityscheduling.com/api/v1/appointments/"+request.form['id'], data=empty_disposition, auth=(acuity_user_id,acuity_api_key))
-                header.jprint(r.json())
+                logging.info(r.json())
                 
             #update breezy stage
             header.updateStage(candidate_id,position_id,header.Interviewing)
@@ -78,15 +80,15 @@ def interviewScheduled():
             return Response(status=201)
 
     except UnboundLocalError:
-       print("Someone is missing necassary information")
+       logging.error("Someone is missing necassary information")
        return Response(status=401)
 
     except KeyError:
-       print("Someone is missing necassary information")
+       logging.error("Someone is missing necassary information")
        return Response(status=401)
 
     except IndexError:
-        print("There is some issue finding a candidate in the csv")
+        logging.error("There is some issue finding a candidate in the csv")
         return Response(status=501)
 
     except:
