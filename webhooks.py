@@ -66,8 +66,7 @@ def interviewScheduled():
                         }
                     ]
                 })
-                r = requests.put("https://acuityscheduling.com/api/v1/appointments/"+request.form['id'], data=empty_disposition, auth=(acuity_user_id,acuity_api_key))
-                logging.info(r.json())
+                requests.put("https://acuityscheduling.com/api/v1/appointments/"+request.form['id'], data=empty_disposition, auth=(acuity_user_id,acuity_api_key))
                 
             #update breezy stage
             header.updateStage(candidate_id,position_id,header.Interviewing)
