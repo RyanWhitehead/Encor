@@ -1,5 +1,6 @@
 import csv, requests, json, csv, boto3, logging
 from datetime import datetime
+from logging.handlers import RotatingFileHandler
 
 #testing again
 
@@ -25,11 +26,6 @@ called_no_contact = 18856
 called_left_message = 18855
 new_dial = 19050
 new = 18823
-
-logging.basicConfig(filename='/home/ubuntu/DEBUG.log', level=logging.DEBUG)
-for name in ['boto', 'urllib3', 's3transfer', 'boto3', 'botocore', 'nose']:
-    logging.getLogger(name).setLevel(logging.CRITICAL)
-logger = logging.getLogger(__name__)
 
 def get_secret(secret):
 

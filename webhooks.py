@@ -10,8 +10,6 @@
 ##
 ##     -Figure out the best mehtod for deploying
 ##
-##     -Have the log stop filling at 10mb, and start a new one
-##
 ##     -Make a new refresh, stronger, better, faster
 ##
 ##     -Get rid of candidates in csv if they are deleted in breezy
@@ -21,14 +19,17 @@ import header
 import requests, boto3, json, tenacity, logging, sys
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
+from flask.logging import default_handler
 
-logging.basicConfig(filename='/home/ubuntu/DEBUG.log', level=logging.DEBUG)
 for name in ['boto', 'urllib3', 's3transfer', 'boto3', 'botocore', 'nose']:
     logging.getLogger(name).setLevel(logging.CRITICAL)
-logger = logging.getLogger(__name__)
+
+handler = RotatingFileHandler('/home/ubuntu/DEBUG.log', maxBytes=10*1024*1024, backupCount=2)
+
+logging.getLogger('werkzeug').setLevel(logging.DEBUG)
+logging.getLogger('werkzeug').addHandler(handler)
 
 app = Flask(__name__)
-
 app.env = 'development'
 
 sign_in = {"email":header.get_secret('breezy_email'),'password':header.get_secret('breezy_password')}
