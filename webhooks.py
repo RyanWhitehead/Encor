@@ -62,7 +62,6 @@ def interviewScheduled():
                 header.addCustom(candidate_id,position_id,'Has Rescheduled','True')
                 #change the appointment dispostiion back to nil
                 empty_disposition = json.dumps({
-                    'firstName':'test',
                     'fields':[
                         {
                         "id":8806210,
@@ -72,7 +71,19 @@ def interviewScheduled():
                 })
                 requests.put("https://acuityscheduling.com/api/v1/appointments/"+request.form['id'], data=empty_disposition, auth=(acuity_user_id,acuity_api_key))
                 
+            full_name = acuity.json()['firstName']+" "+acuity.json()['lastName']
+            phone = acuity.json()['phone']
+            email = acuity.json()['email']
+
+            breezy_update_url = 'https://api.breezy.hr/v3/company/'+breezy_company_id+'/position/'+position_id+'/candidate/'+candidate_id
+
             #update breezy stage
+            update_info = {
+                'name':full_name,
+                'phone_number':phone,
+                'email_adress':email
+            }
+            requests.put(breezy_update_url, data=update_info, headers=breezy_header)
             header.updateStage(candidate_id,position_id,header.Interviewing)
             header.addCustom(candidate_id,position_id,'appointment_id',request.form['id'])
             #update ricochet status
@@ -95,7 +106,7 @@ def interviewScheduled():
         return Response(status=501)
 
     except:
-        logging.error("Unexpected error:")  
+        logging.exception("message")  
         return Response(status=500)
 
 app.add_url_rule('/interviewRescheduled', 'interviewScheduled', interviewScheduled, methods=['POST'])
@@ -129,28 +140,34 @@ def candidateAdded():
             if i == 'email_address':
                 email_address = breezy_candidate[i]
 
-        acuity_link =  "https://encorsolar.as.me/?appointmentType=18537783&firstName="+first_name+"&lastName="+last_name+"&field:8821576="+candidate_id+"&phone="+phone_number+"&email="+email_address
-        
-        #this block of text send the info to ricochet and adds a custom attribute that is the breezy id to search for later
-        ricochet_lead_values = {
-            'phone': phone_number,
-            "firstName": first_name,
-            'lastName':last_name,
-            'acuity_link':acuity_link,
-            'position':position,
-            'status': "0. NEW"
-            }
-        
-        ricochet_lead_id = requests.post('https://leads.ricochet.me/api/v1/lead/create/Breezy?token='+ricochet_post_token, data=ricochet_lead_values).json()["lead_id"]
+        if request.json['type'] == 'candidateAdded':
 
-        #this adds the custom url to the candidate
-        header.addCustom(candidate_id,position_id,'Custom Link',acuity_link)
+            acuity_link =  "https://encorsolar.as.me/?appointmentType=18537783&firstName="+first_name+"&lastName="+last_name+"&field:8821576="+candidate_id+"&phone="+phone_number+"&email="+email_address
+            
+            #this block of text send the info to ricochet and adds a custom attribute that is the breezy id to search for later
+            ricochet_lead_values = {
+                'phone': phone_number,
+                "firstName": first_name,
+                'lastName':last_name,
+                'acuity_link':acuity_link,
+                'position':position,
+                'status': "0. NEW"
+                }
+            
+            ricochet_lead_id = requests.post('https://leads.ricochet.me/api/v1/lead/create/Breezy?token='+ricochet_post_token, data=ricochet_lead_values).json()["lead_id"]
 
-        #this code saves the candidate
-        contacted_candidate = [[candidate_id,position_id,ricochet_lead_id]]
-        header.add_file(contacted_candidate)
+            #this adds the custom url to the candidate
+            header.addCustom(candidate_id,position_id,'Custom Link',acuity_link)
+
+            #this code saves the candidate
+            contacted_candidate = [[candidate_id,position_id,ricochet_lead_id]]
+            header.add_file(contacted_candidate)
+            
+            header.updateStage(candidate_id,position_id,header.Texting)
         
-        header.updateStage(candidate_id,position_id,header.Texting)
+        elif request.json['type'] == 'candidateDeleted':
+            requests.delete("https://acuityscheduling.com/api/v1/clients?firstname="+first_name+"lastName="+last_name+"phone="+phone_number, auth=(acuity_user_id,acuity_api_key))
+            header.delete_file(candidate_id)
 
         return Response(status=200)
         
