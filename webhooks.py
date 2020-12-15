@@ -13,6 +13,8 @@
 ##     -Make a new refresh, stronger, better, faster
 ##
 ##     -Get rid of candidates in csv if they are deleted in breezy
+##
+##     -Update ricochet with acuity info as well
 
 from flask import Flask, request, Response, json
 import header
@@ -24,7 +26,7 @@ from flask.logging import default_handler
 for name in ['boto', 'urllib3', 's3transfer', 'boto3', 'botocore', 'nose']:
     logging.getLogger(name).setLevel(logging.CRITICAL)
 
-handler = RotatingFileHandler('/home/ubuntu/DEBUG.log', maxBytes=10*1024*1024, backupCount=2)
+handler = RotatingFileHandler('/home/ubuntu/DEBUG.log', maxBytes=10*1024*1024, backupCount=2)#ten mbs
 
 logging.getLogger('werkzeug').setLevel(logging.DEBUG)
 logging.getLogger('werkzeug').addHandler(handler)
