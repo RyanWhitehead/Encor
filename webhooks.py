@@ -87,6 +87,21 @@ def interviewScheduled():
                 'email_adress':email
             }
             requests.put(breezy_update_url, data=update_info, headers=breezy_header)
+
+            head = {
+                "Content-Type":"application/json"
+            }
+            body = json.dumps({
+                "token":header.get_secret('ricochet_user_token'),
+                'stc_id':lead_id,
+                'firstName':acuity.json()['firstName'],
+                'lastName':acuity.json()['lastName'],
+                'phone1':phone,
+                'email':email
+            })
+            r = requests.post("https://ricochet.me/api/v4/leads/externalupdate", data=body, headers=head)
+            header.jprint(r.json())
+            
             header.updateStage(candidate_id,position_id,header.Interviewing)
             header.addCustom(candidate_id,position_id,'appointment_id',request.form['id'])
             #update ricochet status
@@ -97,19 +112,21 @@ def interviewScheduled():
             return Response(status=201)
 
     except UnboundLocalError:
-       logging.error("Someone is missing necassary information")
+       logging.getLogger('werkzeug').error("Someone is missing necassary information")
        return Response(status=401)
 
     except KeyError:
-       logging.error("Someone is missing necassary information")
+       logging.getLogger('werkzeug').error("Someone is missing necassary information")
        return Response(status=401)
 
     except IndexError:
-        logging.error("There is some issue finding a candidate in the csv")
+        logging.getLogger('werkzeug').error("There is some issue finding a candidate in the csv")
+        contacted_candidate = [[candidate_id,position_id,lead_id]]
+        header.add_file(contacted_candidate)
         return Response(status=501)
 
     except:
-        logging.exception("message")  
+        logging.getLogger('werkzeug').exception("message")  
         return Response(status=500)
 
 app.add_url_rule('/interviewRescheduled', 'interviewScheduled', interviewScheduled, methods=['POST'])
@@ -175,13 +192,13 @@ def candidateAdded():
         return Response(status=200)
         
     except IndexError:
-        logging.error("Someone managed to put something invalid")
+        logging.getLogger('werkzeug').error("Someone managed to put something invalid")
         return Response(status=400)
     except KeyError:
-        logging.error("Someone managed to put something invalid")
+        logging.getLogger('werkzeug').error("Someone managed to put something invalid")
         return Response(status=400)
     except:
-        logging.error("Unexpected error:")  
+        logging.getLogger('werkzeug').error("Unexpected error:")  
         return Response(status=500)
 
 #TODO
@@ -245,16 +262,16 @@ def dispositionChanged():
             return Response(status=201)
 
     except KeyError:
-        logging.error("Someone is missing necassary information")
+        logging.getLogger('werkzeug').error("Someone is missing necassary information")
         return Response(status=401)
     except UnboundLocalError:
-        logging.error("Someone is missing necassary information")
+        logging.getLogger('werkzeug').error("Someone is missing necassary information")
         return Response(status=401)
     except IndexError:
-        logging.error("There is some issue finding a candidate in the csv")
+        logging.getLogger('werkzeug').error("There is some issue finding a candidate in the csv")
         return Response(status=501)
     except:
-        logging.error("Unexpected error:")  
+        logging.getLogger('werkzeug').error("Unexpected error:")  
         return Response(status=500)
     
 
@@ -293,13 +310,13 @@ def statusUpdate():
         
         return Response(status=200)
     except KeyError:
-        logging.error("Some necassary info is missing")
+        logging.getLogger('werkzeug').error("Some necassary info is missing")
         return Response(status=401)
     except IndexError:
-        logging.error("There is some issue finding a candidate in the csv")
+        logging.getLogger('werkzeug').error("There is some issue finding a candidate in the csv")
         return Response(status=501)
     except:
-        logging.error("Unexpected error:")  
+        logging.getLogger('werkzeug').error("Unexpected error:")  
         return Response(status=500)
 
 #this just runs the code on port 80, and will accept info form anyone (unofrtuantly this is necsassry
