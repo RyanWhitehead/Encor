@@ -10,11 +10,7 @@
 ##
 ##     -Figure out the best mehtod for deploying
 ##
-##     -Make a new refresh, stronger, better, faster
-##
 ##     -Get rid of candidates in csv if they are deleted in breezy
-##
-##     -Update ricochet with acuity info as well
 
 from flask import Flask, request, Response, json
 import header
@@ -269,6 +265,8 @@ def dispositionChanged():
         return Response(status=401)
     except IndexError:
         logging.getLogger('werkzeug').error("There is some issue finding a candidate in the csv")
+        contacted_candidate = [[candidate_id,position_id,lead_id]]
+        header.add_file(contacted_candidate)
         return Response(status=501)
     except:
         logging.getLogger('werkzeug').error("Unexpected error:")  
@@ -314,6 +312,8 @@ def statusUpdate():
         return Response(status=401)
     except IndexError:
         logging.getLogger('werkzeug').error("There is some issue finding a candidate in the csv")
+        contacted_candidate = [[candidate_id,position_id,lead_id]]
+        header.add_file(contacted_candidate)
         return Response(status=501)
     except:
         logging.getLogger('werkzeug').error("Unexpected error:")  
