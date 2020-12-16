@@ -27,6 +27,21 @@ called_left_message = 18855
 new_dial = 19050
 new = 18823
 
+email = ""
+password = ""
+breezy_company_id = ""
+acuity_user_id = ""
+acuity_api_key = ""
+position_id = ""
+position_name = ""
+
+sign_in = {"email":email,'password':password}
+breezy_auth = requests.post('https://api.breezy.hr/v3/signin',data=sign_in).json()['access_token']
+breezy_header = {'Authorization':breezy_auth}
+
+ricochet_headers = {'Content-Type':'application/json'}
+
+ricochet_post_token = ''
 
 def get_secret(secret):
 
