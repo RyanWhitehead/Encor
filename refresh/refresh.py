@@ -21,21 +21,7 @@ import head
 import requests, boto3, json
 from datetime import datetime
 
-email = "r.whitehead@encorsolar.com"
-password = "ilikemewaffles12"
-breezy_company_id = "3446d8d33d15"
-acuity_user_id = "21303593"
-acuity_api_key = "17ebea1a38641310ebcc5e6fcef422b4"
-position_id = "7e33893fc75b"
-position_name = "test"
 
-sign_in = {"email":email,'password':password}
-breezy_auth = requests.post('https://api.breezy.hr/v3/signin',data=sign_in).json()['access_token']
-breezy_header = {'Authorization':breezy_auth}
-
-ricochet_headers = {'Content-Type':'application/json'}
-
-ricochet_post_token = 'dd5da565905396e4860d92f70ddad37b'
 
 #First we need to get every candidate and determine which ones are new by Checking to see if they
 #are in the applied stage. then we need to send all of those candidates a text, and do all the other stuff we usually do

@@ -27,18 +27,6 @@ called_left_message = 18855
 new_dial = 19050
 new = 18823
 
-email = "r.whitehead@encorsolar.com"
-password = "ilikemewaffles12"
-breezy_company_id = "3446d8d33d15"
-acuity_user_id = ""
-acuity_api_key = ""
-breezy_position_id = "7e33893fc75b"
-
-sign_in = {"email":email,'password':password}
-breezy_auth = requests.post('https://api.breezy.hr/v3/signin',data=sign_in).json()['access_token']
-breezy_header = {'Authorization':breezy_auth}
-
-ricochet_header = {'Content-Type':'application/json'}
 
 def get_secret(secret):
 
