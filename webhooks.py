@@ -13,13 +13,14 @@
 ##     -Get the info we want to pull fomr ethan
 ##
 ##     -pull that info and put it into a csv
+##
+##     -When do we put them in hired?
 
 from flask import Flask, request, Response, json
 import header
 import requests, boto3, json, tenacity, logging, sys
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
-from flask.logging import default_handler
 
 for name in ['boto', 'urllib3', 's3transfer', 'boto3', 'botocore', 'nose']:
     logging.getLogger(name).setLevel(logging.CRITICAL)
@@ -111,12 +112,10 @@ def interviewScheduled():
 
     except UnboundLocalError:
        logger.error("Someone is missing necassary information")
-       logger.exception("message")
        return Response(status=401)
 
     except KeyError:
        logger.error("Someone is missing necassary information")
-       logger.exception("message")  
        return Response(status=401)
 
     except IndexError:
@@ -193,11 +192,9 @@ def candidateAdded():
         
     except IndexError:
         logger.error("Someone managed to put something invalid")
-        logger.exception("message")  
         return Response(status=400)
     except KeyError:
         logger.error("Someone managed to put something invalid")
-        logger.exception("message")  
         return Response(status=400)
     except:
         logger.error("Unexpected error:")  
@@ -305,11 +302,9 @@ def statusUpdate():
     
         if lead['status'] == "2. CONTACTED - Not Interested": #this is when we learn they are no longer interested over the phone
             header.offbaord(candidate_id, lead['status'])
-            header.updateStatus(lead_id,header.disqualified_ric)
 
         elif lead['status'] == "2. CONTACTED - Wrong Numebr": #this is when they no show twice
             header.offbaord(candidate_id, lead['status'])
-            header.updateStatus(lead_id,header.disqualified_ric)
 
         elif lead['status'] == "0. NEW - Dial": #this is when they are in theyve been texted twice
             header.updateStage(candidate_id,position_id,header.Dialing)
@@ -328,6 +323,7 @@ def statusUpdate():
         return Response(status=501)
     except:
         logger.error("Unexpected error:")  
+        logger.exception("message")  
         return Response(status=500)
 
 #this just runs the code on port 80, and will accept info form anyone (unofrtuantly this is necsassry
