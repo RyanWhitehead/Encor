@@ -8,9 +8,11 @@
 ##
 ##     -if I were to run this for a month the brezzy thing would loose auth
 ##
-##     -Figure out the best mehtod for deploying
+##     -Make sure to get rid of debug and development env when I deploy
 ##
-##     -Get rid of candidates in csv if they are deleted in breezy
+##     -Get the info we want to pull fomr ethan
+##
+##     -pull that info and put it into a csv
 
 from flask import Flask, request, Response, json
 import header
@@ -22,10 +24,12 @@ from flask.logging import default_handler
 for name in ['boto', 'urllib3', 's3transfer', 'boto3', 'botocore', 'nose']:
     logging.getLogger(name).setLevel(logging.CRITICAL)
 
-handler = RotatingFileHandler('/home/ubuntu/DEBUG.log', maxBytes=10*1024*1024, backupCount=2)#ten mbs
+handler = RotatingFileHandler('/home/ubuntu/DEBUG.log', maxBytes=10*1024*1024, backupCount=2)#10 Mbs
 
-logging.getLogger('werkzeug').setLevel(logging.DEBUG)
-logging.getLogger('werkzeug').addHandler(handler)
+logger = logging.getLogger('werkzeug')
+
+logger.setLevel(logging.DEBUG)
+logger.addHandler(handler)
 
 app = Flask(__name__)
 app.env = 'development'
@@ -80,7 +84,7 @@ def interviewScheduled():
             update_info = {
                 'name':full_name,
                 'phone_number':phone,
-                'email_adress':email
+                'email_address':email
             }
             requests.put(breezy_update_url, data=update_info, headers=breezy_header)
 
@@ -95,9 +99,7 @@ def interviewScheduled():
                 'phone1':phone,
                 'email':email
             })
-            r = requests.post("https://ricochet.me/api/v4/leads/externalupdate", data=body, headers=head)
-            header.jprint(r.json())
-            
+            requests.post("https://ricochet.me/api/v4/leads/externalupdate", data=body, headers=head)
             header.updateStage(candidate_id,position_id,header.Interviewing)
             header.addCustom(candidate_id,position_id,'appointment_id',request.form['id'])
             #update ricochet status
@@ -108,21 +110,23 @@ def interviewScheduled():
             return Response(status=201)
 
     except UnboundLocalError:
-       logging.getLogger('werkzeug').error("Someone is missing necassary information")
+       logger.error("Someone is missing necassary information")
+       logger.exception("message")
        return Response(status=401)
 
     except KeyError:
-       logging.getLogger('werkzeug').error("Someone is missing necassary information")
+       logger.error("Someone is missing necassary information")
+       logger.exception("message")  
        return Response(status=401)
 
     except IndexError:
-        logging.getLogger('werkzeug').error("There is some issue finding a candidate in the csv")
+        logger.error("There is some issue finding a candidate in the csv")
         contacted_candidate = [[candidate_id,position_id,lead_id]]
         header.add_file(contacted_candidate)
         return Response(status=501)
 
     except:
-        logging.getLogger('werkzeug').exception("message")  
+        logger.exception("message")  
         return Response(status=500)
 
 app.add_url_rule('/interviewRescheduled', 'interviewScheduled', interviewScheduled, methods=['POST'])
@@ -139,26 +143,26 @@ app.add_url_rule('/interviewRescheduled', 'interviewScheduled', interviewSchedul
 @app.route('/candidateAdded', methods=['POST'])
 def candidateAdded():
     try:
-        candidate_id = request.json['object']['candidate']['_id']
-        position_id = request.json['object']['position']['_id']
-        breezy_candidate = header.get_candidate(candidate_id,position_id).json()
+        breezy_candidate = request.json['object']
+        candidate_id = breezy_candidate['candidate']['_id']
+        position_id = breezy_candidate['position']['_id']
         
-        first_name = request.json['object']['candidate']['name'].split()[0]
-        last_name = request.json['object']['candidate']['name'].split()[-1]
-        if " " not in request.json['object']['candidate']['name']:
+        first_name = breezy_candidate['candidate']['name'].split()[0]
+        last_name = breezy_candidate['candidate']['name'].split()[-1]
+        if " " not in breezy_candidate['candidate']['name']:
             last_name = ""
-        position = request.json['object']['position']['name']
+        position = breezy_candidate['position']['name']
         phone_number = ""
         email_address = ""
-        for i in breezy_candidate:
+        for i in breezy_candidate['candidate']:
             if i == 'phone_number':
-                phone_number = breezy_candidate[i]
+                phone_number = breezy_candidate['candidate']['phone_number']
             if i == 'email_address':
-                email_address = breezy_candidate[i]
+                email_address = breezy_candidate['candidate']['email_address']
 
         if request.json['type'] == 'candidateAdded':
 
-            acuity_link =  "https://encorsolar.as.me/?appointmentType=18537783&firstName="+first_name+"&lastName="+last_name+"&field:8821576="+candidate_id+"&phone="+phone_number+"&email="+email_address
+            acuity_link =  "https://encorsolar.as.me/?appointmentType=19039217&firstName="+first_name+"&lastName="+last_name+"&field:8821576="+candidate_id+"&phone="+phone_number+"&email="+email_address
             
             #this block of text send the info to ricochet and adds a custom attribute that is the breezy id to search for later
             ricochet_lead_values = {
@@ -182,19 +186,22 @@ def candidateAdded():
             header.updateStage(candidate_id,position_id,header.Texting)
         
         elif request.json['type'] == 'candidateDeleted':
-            requests.delete("https://acuityscheduling.com/api/v1/clients?firstname="+first_name+"lastName="+last_name+"phone="+phone_number, auth=(acuity_user_id,acuity_api_key))
+            requests.delete("https://acuityscheduling.com/api/v1/clients?firstName="+first_name+"&lastName="+last_name+"&phone="+phone_number, auth=(acuity_user_id,acuity_api_key))
             header.delete_file(candidate_id)
 
         return Response(status=200)
         
     except IndexError:
-        logging.getLogger('werkzeug').error("Someone managed to put something invalid")
+        logger.error("Someone managed to put something invalid")
+        logger.exception("message")  
         return Response(status=400)
     except KeyError:
-        logging.getLogger('werkzeug').error("Someone managed to put something invalid")
+        logger.error("Someone managed to put something invalid")
+        logger.exception("message")  
         return Response(status=400)
     except:
-        logging.getLogger('werkzeug').error("Unexpected error:")  
+        logger.error("Unexpected error:")  
+        logger.exception("message")  
         return Response(status=500)
 
 #TODO
@@ -221,14 +228,14 @@ def dispositionChanged():
         print(candidate_id,position_id,disposition)
         if request.form['action'] == 'changed':
             #get the correct pipleine stage based off of the disposistion
-            if disposition == "Offer Made - Accepted": #Offer Accepted
+            if disposition == "Offer Accepted": #Offer Accepted
                 header.updateStage(candidate_id,position_id,header.Onboarding)
                 header.updateStatus(lead_id,header.hired_ric)
                 
-            elif disposition == "Offer Made - Not Accepted": #Offer Declined
+            elif disposition == "Offer Declined": #Offer Declined
                 header.offbaord(candidate_id,"Offer Made - Not Accepted")
                 
-            elif disposition == "Not Offered": #Disqualified
+            elif disposition == "Disqualified": #Disqualified
                 header.offbaord(candidate_id,"Not Offered")
 
             #this needs to know a few things, did they schedule from a text or were they called (I can check this by seeing if they were in a contacted status previousely), if they were 
@@ -250,7 +257,10 @@ def dispositionChanged():
                 if no_show != True:
                     header.addCustom(candidate_id,position_id,'No Show',request.form['id'])
 
-            elif disposition == "Offer Pending" or disposition == "Pending":
+            elif disposition == "Offer Pending":
+                pass
+            
+            elif disposition == "Pending":
                 pass
 
             return Response(status=200)
@@ -258,18 +268,19 @@ def dispositionChanged():
             return Response(status=201)
 
     except KeyError:
-        logging.getLogger('werkzeug').error("Someone is missing necassary information")
+        logger.error("Someone is missing necassary information")
         return Response(status=401)
     except UnboundLocalError:
-        logging.getLogger('werkzeug').error("Someone is missing necassary information")
+        logger.error("Someone is missing necassary information")
         return Response(status=401)
     except IndexError:
-        logging.getLogger('werkzeug').error("There is some issue finding a candidate in the csv")
+        logger.error("There is some issue finding a candidate in the csv")
         contacted_candidate = [[candidate_id,position_id,lead_id]]
         header.add_file(contacted_candidate)
         return Response(status=501)
     except:
-        logging.getLogger('werkzeug').error("Unexpected error:")  
+        logger.error("Unexpected error:")  
+        logger.exception("message")  
         return Response(status=500)
     
 
@@ -308,15 +319,15 @@ def statusUpdate():
         
         return Response(status=200)
     except KeyError:
-        logging.getLogger('werkzeug').error("Some necassary info is missing")
+        logger.error("Some necassary info is missing")
         return Response(status=401)
     except IndexError:
-        logging.getLogger('werkzeug').error("There is some issue finding a candidate in the csv")
+        logger.error("There is some issue finding a candidate in the csv")
         contacted_candidate = [[candidate_id,position_id,lead_id]]
         header.add_file(contacted_candidate)
         return Response(status=501)
     except:
-        logging.getLogger('werkzeug').error("Unexpected error:")  
+        logger.error("Unexpected error:")  
         return Response(status=500)
 
 #this just runs the code on port 80, and will accept info form anyone (unofrtuantly this is necsassry
