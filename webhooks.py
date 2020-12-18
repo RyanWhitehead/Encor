@@ -12,7 +12,7 @@
 ##
 ##     -Get the info we want to pull fomr ethan
 ##
-##     -pull that info and put it into a csv
+##     -pull that info and put it into a csv everytime a webhook is activated so that we always have the most updated info in real time
 ##
 ##     -When do we put them in hired?
 
@@ -46,7 +46,7 @@ acuity_api_key = header.get_secret('acuity_api_key')
 ricochet_post_token = header.get_secret('ricochet_post_token')
 
 #TODO
-# -I believe this is done
+# -update reporting with the new information
 
 #this is the fucntion that fires everytime an interview is scheduled. all it needs to do is update the breezy
 #stage id to 'Interviewing'. this is so that we know not to text the candidate again.
@@ -121,7 +121,7 @@ def interviewScheduled():
     except IndexError:
         logger.error("There is some issue finding a candidate in the csv")
         contacted_candidate = [[candidate_id,position_id,lead_id]]
-        header.add_file(contacted_candidate)
+        header.add_file(contacted_candidate,'/home/ubuntu/uncontacted_candidates.csv')
         return Response(status=501)
 
     except:
@@ -131,7 +131,7 @@ def interviewScheduled():
 app.add_url_rule('/interviewRescheduled', 'interviewScheduled', interviewScheduled, methods=['POST'])
 
 #TODO
-# -Make the info actually imported into ricochet more than just name and numebr
+# -Add a new row with the candidates informatino in reporting
 
 #this is the function that fires everytime a candiate is added into breezy. This is the starting off point for the whole
 #automated system. It should first get the candidate, then add them as a lead in ricochet, it should then get the id for
@@ -180,13 +180,16 @@ def candidateAdded():
 
             #this code saves the candidate
             contacted_candidate = [[candidate_id,position_id,ricochet_lead_id]]
-            header.add_file(contacted_candidate)
+            header.add_file(contacted_candidate,'/home/ubuntu/uncontacted_candidates.csv')
             
             header.updateStage(candidate_id,position_id,header.Texting)
+            
+            header.addReporting(breezy_candidate)
         
         elif request.json['type'] == 'candidateDeleted':
             requests.delete("https://acuityscheduling.com/api/v1/clients?firstName="+first_name+"&lastName="+last_name+"&phone="+phone_number, auth=(acuity_user_id,acuity_api_key))
             header.delete_file(candidate_id)
+
 
         return Response(status=200)
         
@@ -202,7 +205,7 @@ def candidateAdded():
         return Response(status=500)
 
 #TODO
-# -Make sure to do it based on the new dispositions. Act accordingly
+# -update reporting with the new info
 
 #this is the function that triggers when anything is changed on a acuity appointment. While we don't need to know every change,
 #it is important to be able know when a disposition is change. In an ideal world, the disposition is only changed once, maybe twice
@@ -273,7 +276,7 @@ def dispositionChanged():
     except IndexError:
         logger.error("There is some issue finding a candidate in the csv")
         contacted_candidate = [[candidate_id,position_id,lead_id]]
-        header.add_file(contacted_candidate)
+        header.add_file(contacted_candidate,'/home/ubuntu/uncontacted_candidates.csv')
         return Response(status=501)
     except:
         logger.error("Unexpected error:")  
@@ -282,7 +285,7 @@ def dispositionChanged():
     
 
 #TODO
-# -Just keep this updated for when I need to do something
+# -update reporting with the new info
 
 #this functino should trigger everytime a candidates dispostiion in ricochet changes. If we set this up the way I think we will
 #this will tell me if theyve been contated and would like to be called back, or if they havnt been contacted
@@ -319,7 +322,7 @@ def statusUpdate():
     except IndexError:
         logger.error("There is some issue finding a candidate in the csv")
         contacted_candidate = [[candidate_id,position_id,lead_id]]
-        header.add_file(contacted_candidate)
+        header.add_file(contacted_candidate,'/home/ubuntu/uncontacted_candidates.csv')
         return Response(status=501)
     except:
         logger.error("Unexpected error:")  

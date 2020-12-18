@@ -63,8 +63,8 @@ def write_file(file):
     return
 
 #add
-def add_file(row):
-    add_file = open('/home/ubuntu/uncontacted_candidates.csv', 'a')
+def add_file(row, where):
+    add_file = open(where, 'a')
 
     with add_file:
         writer = csv.writer(add_file)
@@ -155,3 +155,11 @@ def offbaord(candidate_id, reason):
     updateStage(candidate_id,position_id,Disqualified)
     updateStatus(lead_id, disqualified_ric)
     
+def addReporting(candidate):#this will be the function that runs when there is a new candidate added
+    candidate = [[candidate['candidate']['_id'], candidate['position']['name'], candidate['candidate']['name']]]
+    add_file(candidate, '/home/ubuntu/reporting.csv')
+    #then send the file to onedrive
+    pass
+
+def updateReporting(): #this is the function that runs whenever anything is changed
+    pass
