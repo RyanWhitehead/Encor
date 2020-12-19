@@ -1,5 +1,5 @@
 import csv, requests, json, csv, boto3, logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from logging.handlers import RotatingFileHandler
 
 #testing again
@@ -52,14 +52,12 @@ def jprint(obj):
 	text = json.dumps(obj, sort_keys=True, indent=4)
 	print(text)
 
-#wirte
-def write_file(file):
-    write_file = open('/home/ubuntu/uncontacted_candidates.csv', 'w')
+def write_file(row, where):
+    add_file = open(where, 'w')
 
-    with write_file:
-        writer = csv.writer(write_file)
-        writer.writerows(file)
-
+    with add_file:
+        writer = csv.writer(add_file)
+        writer.writerows(row)
     return
 
 #add
@@ -72,12 +70,12 @@ def add_file(row, where):
     return
 
 #delete
-def delete_file(to_delete, look_up=0):
+def delete_file(to_delete, file, look_up=0):
 
     found = False
     lines = []
     deleted = []
-    delete_file = open('/home/ubuntu/uncontacted_candidates.csv', 'r')    
+    delete_file = open(file, 'r')    
     with delete_file:
 
         reader = csv.reader(delete_file)
@@ -93,13 +91,13 @@ def delete_file(to_delete, look_up=0):
                     deleted.append(row)
                     found = True
      
-    write_file(lines) 
+    write_file(lines, file) 
     return deleted
 
-def find_file(to_find, look_up=0):
+def find_file(to_find, file, look_up=0):
     found = False
     found_rows = []
-    find_file = open('/home/ubuntu/uncontacted_candidates.csv', 'r')    
+    find_file = open(file, 'r')    
     with find_file:
 
         reader = csv.reader(find_file)
@@ -119,12 +117,6 @@ def get_candidate(candidate_id,position_id):
     breezy_candidate = requests.get(breezy_candidate_url, headers=breezy_header)
     return breezy_candidate
 
-
-def updateStage(candidate_id,position_id,stage):
-    breezy_stage = {'stage_id':stage}
-    breezy_custom_url = 'https://api.breezy.hr/v3/company/'+breezy_company_id+'/position/'+position_id+'/candidate/'+candidate_id+'/stage'
-
-    requests.put(breezy_custom_url, data=breezy_stage, headers=breezy_header)
     
 def addCustom(candidate_id, position_id, name, value):
     breezy_custom_params = {"name":name, 'value':value}
@@ -148,18 +140,55 @@ def updateStatus(lead_id, new_status):
 
 def offbaord(candidate_id, reason):
     #get the person who wasnt contacted
-    position_id = find_file(candidate_id)[0][1]
-    lead_id = find_file(candidate_id)[0][2]
+    position_id = find_file(candidate_id,'/home/ubuntu/uncontacted_candidates.csv')[0][1]
+    lead_id = find_file(candidate_id,'/home/ubuntu/uncontacted_candidates.csv')[0][2]
     #update their stage to whatever, and delete them from the csv
     addCustom(candidate_id,position_id,'Discard Reason',reason)
     updateStage(candidate_id,position_id,Disqualified)
     updateStatus(lead_id, disqualified_ric)
     
 def addReporting(candidate):#this will be the function that runs when there is a new candidate added
-    candidate = [[candidate['candidate']['_id'], candidate['position']['name'], candidate['candidate']['name']]]
+    first_name = candidate['candidate']['name'].split()[0]
+    last_name = candidate['candidate']['name'].split()[-1]
+    if " " not in candidate['candidate']['name']:
+        last_name = "lastName"
+
+    phone_number = "phone"
+    email_address = "email"
+    for i in candidate['candidate']:
+        if i == 'phone_number':
+            phone_number = candidate['candidate']['phone_number']
+        if i == 'email_address':
+            email_address = candidate['candidate']['email_address']
+
+    candidate = [[candidate['candidate']['_id'], first_name, last_name, phone_number, email_address, '0', 'contatedOn', datetime.now().date(), datetime.now().date() + timedelta(days=1), 'intScheduledDate','intConductedDate',"hiredDate","startedDate",'intDisposition', 'breezyStatus']]
     add_file(candidate, '/home/ubuntu/reporting.csv')
     #then send the file to onedrive
     pass
 
-def updateReporting(): #this is the function that runs whenever anything is changed
-    pass
+#this will take an id for lookup, and a dictionary with keys that represent the columns that we would like to change, the values will be the new values.
+def updateReporting(candidate_id, to_update): #this is the function that runs whenever anything is changed
+    old = find_file(candidate_id,'/home/ubuntu/reporting.csv')[0]
+    delete_file(candidate_id, '/home/ubuntu/reporting.csv')
+    columns = ["id","firstName", "lastName", 'phone', 'email', 'timesCalled', 'contactedOn', 'textDate1','textDate2', 'intScheduledDate','intConductedDate',"hiredDate","startedDate",'intDisposition','breezyStatus']
+    new_full = [[]]
+    new = new_full[0]
+    for i in range(len(columns)):
+        try:
+            if to_update[columns[i]] != old[i]:
+                new.append(to_update[columns[i]])
+            else:
+                new.append(old[i])
+        except KeyError:
+            new.append(old[i])
+    add_file(new_full, '/home/ubuntu/reporting.csv')
+
+def updateStage(candidate_id,position_id,stage):
+    breezy_stage = {'stage_id':stage}
+    breezy_custom_url = 'https://api.breezy.hr/v3/company/'+breezy_company_id+'/position/'+position_id+'/candidate/'+candidate_id+'/stage'
+
+    requests.put(breezy_custom_url, data=breezy_stage, headers=breezy_header)
+    update = {
+        'breezyStatus':stage
+    }
+    updateReporting(candidate_id,update)

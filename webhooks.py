@@ -59,9 +59,9 @@ def interviewScheduled():
                 if i['name'] == "Candidate Id":
                     candidate_id = i['values'][0]['value']
 
-            position_id = header.find_file(candidate_id)[0][1]
-            lead_id = header.find_file(candidate_id)[0][2]
-
+            position_id = header.find_file(candidate_id, '/home/ubuntu/uncontacted_candidates.csv')[0][1]
+            lead_id = header.find_file(candidate_id, '/home/ubuntu/uncontacted_candidates.csv')[0][2]
+            
             if request.form['action'] == 'rescheduled':
                 header.addCustom(candidate_id,position_id,'Has Rescheduled','True')
                 #change the appointment dispostiion back to nil
@@ -80,6 +80,19 @@ def interviewScheduled():
             email = acuity.json()['email']
 
             breezy_update_url = 'https://api.breezy.hr/v3/company/'+breezy_company_id+'/position/'+position_id+'/candidate/'+candidate_id
+            
+
+            update = {
+                'intScheduledDate':datetime.now().date(),
+                'intConductedDate':acuity.json()['date'],
+                'firstName':acuity.json()['firstName'],
+                'lastName':acuity.json()['lastName'],
+                'phone':phone,
+                'email':email
+            }
+
+            header.updateReporting(candidate_id, update)
+
 
             #update breezy stage
             update_info = {
@@ -111,17 +124,18 @@ def interviewScheduled():
             return Response(status=201)
 
     except UnboundLocalError:
-       logger.error("Someone is missing necassary information")
-       return Response(status=401)
+        logger.error("Someone is missing necassary information")
+        logger.exception("message")  
+        return Response(status=401)
 
     except KeyError:
        logger.error("Someone is missing necassary information")
+       logger.exception("message")  
        return Response(status=401)
 
     except IndexError:
         logger.error("There is some issue finding a candidate in the csv")
-        contacted_candidate = [[candidate_id,position_id,lead_id]]
-        header.add_file(contacted_candidate,'/home/ubuntu/uncontacted_candidates.csv')
+        logger.exception("message")  
         return Response(status=501)
 
     except:
@@ -181,23 +195,26 @@ def candidateAdded():
             #this code saves the candidate
             contacted_candidate = [[candidate_id,position_id,ricochet_lead_id]]
             header.add_file(contacted_candidate,'/home/ubuntu/uncontacted_candidates.csv')
+
+            header.addReporting(breezy_candidate)
             
             header.updateStage(candidate_id,position_id,header.Texting)
             
-            header.addReporting(breezy_candidate)
         
         elif request.json['type'] == 'candidateDeleted':
             requests.delete("https://acuityscheduling.com/api/v1/clients?firstName="+first_name+"&lastName="+last_name+"&phone="+phone_number, auth=(acuity_user_id,acuity_api_key))
-            header.delete_file(candidate_id)
+            header.delete_file(candidate_id, '/home/ubuntu/uncontacted_candidates.csv')
 
 
         return Response(status=200)
         
     except IndexError:
         logger.error("Someone managed to put something invalid")
+        logger.exception("message")  
         return Response(status=400)
     except KeyError:
         logger.error("Someone managed to put something invalid")
+        logger.exception("message")  
         return Response(status=400)
     except:
         logger.error("Unexpected error:")  
@@ -222,16 +239,24 @@ def dispositionChanged():
             if i['name'] == "Interview Disposition":
                 disposition = i['values'][0]['value']
         
-        position_id = header.find_file(candidate_id)[0][1]
-        lead_id = header.find_file(candidate_id)[0][2]
-        
+        position_id = header.find_file(candidate_id, '/home/ubuntu/uncontacted_candidates.csv')[0][1]
+        lead_id = header.find_file(candidate_id, '/home/ubuntu/uncontacted_candidates.csv')[0][2]
+
+        update = {
+            'intDisposition':disposition
+        }
+        header.updateReporting(candidate_id,update)
+
         print(candidate_id,position_id,disposition)
         if request.form['action'] == 'changed':
             #get the correct pipleine stage based off of the disposistion
             if disposition == "Offer Accepted": #Offer Accepted
                 header.updateStage(candidate_id,position_id,header.Onboarding)
                 header.updateStatus(lead_id,header.hired_ric)
-                
+                update = {
+                    'hiredDate':datetime.now().date()
+                }
+                header.updateReporting(candidate_id,update)
             elif disposition == "Offer Declined": #Offer Declined
                 header.offbaord(candidate_id,"Offer Made - Not Accepted")
                 
@@ -269,12 +294,15 @@ def dispositionChanged():
 
     except KeyError:
         logger.error("Someone is missing necassary information")
+        logger.exception("message")  
         return Response(status=401)
     except UnboundLocalError:
         logger.error("Someone is missing necassary information")
+        logger.exception("message")  
         return Response(status=401)
     except IndexError:
         logger.error("There is some issue finding a candidate in the csv")
+        logger.exception("message")  
         contacted_candidate = [[candidate_id,position_id,lead_id]]
         header.add_file(contacted_candidate,'/home/ubuntu/uncontacted_candidates.csv')
         return Response(status=501)
@@ -298,29 +326,40 @@ def statusUpdate():
         lead = request.json
 
         lead_id = lead['id']
-        candidate_id = header.find_file(lead_id,2)[0][0]
-        position_id = header.find_file(lead_id,2)[0][1]
+        candidate_id = header.find_file(lead_id,'/home/ubuntu/uncontacted_candidates.csv',2)[0][0]
+        position_id = header.find_file(lead_id,'/home/ubuntu/uncontacted_candidates.csv',2)[0][1]
 
         header.addCustom(candidate_id,position_id,'Ricochet Status',lead['status'])
-    
-        if lead['status'] == "2. CONTACTED - Not Interested": #this is when we learn they are no longer interested over the phone
-            header.offbaord(candidate_id, lead['status'])
 
-        elif lead['status'] == "2. CONTACTED - Wrong Numebr": #this is when they no show twice
+
+
+        if lead['status'] == "2. CONTACTED - Wrong Numebr" or lead['status'] == "2. CONTACTED - Not Interested": #this is when they no show twice
+            update = {
+                'contactedOn':header.find_file(candidate_id,'/home/ubuntu/reporting.csv')[0][5]
+            }
+            header.updateReporting(candidate_id,update)
             header.offbaord(candidate_id, lead['status'])
+        
+        elif lead['status'] == '2. CONTACTED - Interview Scheduled' or lead['status'] == '2. CONTACTED - Callback/Task set':
+            update = {
+                'contactedOn':header.find_file(candidate_id,'/home/ubuntu/reporting.csv')[0][5]
+            }
+            header.updateReporting(candidate_id,update)
 
         elif lead['status'] == "0. NEW - Dial": #this is when they are in theyve been texted twice
             header.updateStage(candidate_id,position_id,header.Dialing)
         
         elif lead['status'] == "4. DISQUALIFIED":#when they hit an endpoint, delete them from the csv
-            header.delete_file(candidate_id)
+            header.delete_file(candidate_id, '/home/ubuntu/uncontacted_candidates.csv')
         
         return Response(status=200)
     except KeyError:
         logger.error("Some necassary info is missing")
+        logger.exception("message")  
         return Response(status=401)
     except IndexError:
         logger.error("There is some issue finding a candidate in the csv")
+        logger.exception("message")  
         contacted_candidate = [[candidate_id,position_id,lead_id]]
         header.add_file(contacted_candidate,'/home/ubuntu/uncontacted_candidates.csv')
         return Response(status=501)
@@ -328,6 +367,17 @@ def statusUpdate():
         logger.error("Unexpected error:")  
         logger.exception("message")  
         return Response(status=500)
+
+@app.route("/leadCalled", methods=["POST"])
+def leadCalled():
+
+    lead_id = request.json['id']
+    candidate_id = header.find_file(lead_id,'/home/ubuntu/uncontacted_candidates.csv',2)[0][0]
+
+    update = {
+        'timesCalled':header.find_file(candidate_id,'/home/ubuntu/reporting.csv')[0][5]+1
+    }
+    header.updateReporting(candidate_id,update)
 
 #this just runs the code on port 80, and will accept info form anyone (unofrtuantly this is necsassry
 #to get the webhooks from the different sites.)
