@@ -1,4 +1,4 @@
-import csv, requests, json, csv, boto3, logging
+import csv, requests, json, csv, boto3, logging, os
 from datetime import datetime, timedelta
 from logging.handlers import RotatingFileHandler
 
@@ -39,6 +39,23 @@ def get_secret(secret):
     get_secret_value_response = client.get_secret_value(SecretId=secret_name)
     secret_json = get_secret_value_response['SecretString']
     return json.loads(secret_json)[secret]
+
+fileName = 'reporting.csv'
+file = open(fileName, 'rb')
+data = {'grant_type':"client_credentials", 
+        'resource':"https://graph.microsoft.com", 
+        'client_id':get_secret('client_id'), 
+        'client_secret':get_secret('client_secret')} 
+URL = "https://login.windows.net/"+get_secret('domain')+"/oauth2/token"
+r = requests.post(url = URL, data = data) 
+j = json.loads(r.text)
+TOKEN = j["access_token"]
+URL = "https://graph.microsoft.com/v1.0/users/ethan.whitehead@encorbi.com/drive/root:/Encor Reports"
+headers={'Authorization': "Bearer " + TOKEN}
+
+def uploadReporting():
+    requests.put(URL+"/"+fileName+":/content", data=file, headers=headers)
+
 
 sign_in = {"email":get_secret('breezy_email'),'password':get_secret('breezy_password')}
 breezy_auth = requests.post('https://api.breezy.hr/v3/signin',data=sign_in).json()['access_token']
@@ -164,7 +181,7 @@ def addReporting(candidate):#this will be the function that runs when there is a
     candidate = [[candidate['candidate']['_id'], first_name, last_name, phone_number, email_address, '0', 'contatedOn', datetime.now().date(), datetime.now().date() + timedelta(days=1), 'intScheduledDate','intConductedDate',"hiredDate","startedDate",'intDisposition', 'breezyStatus']]
     add_file(candidate, '/home/ubuntu/reporting.csv')
     #then send the file to onedrive
-    pass
+    uploadReporting()
 
 #this will take an id for lookup, and a dictionary with keys that represent the columns that we would like to change, the values will be the new values.
 def updateReporting(candidate_id, to_update): #this is the function that runs whenever anything is changed
@@ -182,6 +199,7 @@ def updateReporting(candidate_id, to_update): #this is the function that runs wh
         except KeyError:
             new.append(old[i])
     add_file(new_full, '/home/ubuntu/reporting.csv')
+    uploadReporting()
 
 def updateStage(candidate_id,position_id,stage):
     breezy_stage = {'stage_id':stage}

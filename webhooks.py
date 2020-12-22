@@ -10,9 +10,7 @@
 ##
 ##     -Make sure to get rid of debug and development env when I deploy
 ##
-##     -Get the info we want to pull fomr ethan
-##
-##     -pull that info and put it into a csv everytime a webhook is activated so that we always have the most updated info in real time
+##     -Send that info to onedrive
 ##
 ##     -When do we put them in hired?
 
