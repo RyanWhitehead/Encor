@@ -10,8 +10,6 @@
 ##
 ##     -Make sure to get rid of debug and development env when I deploy
 ##
-##     -Send that info to onedrive
-##
 ##     -When do we put them in hired?
 
 from flask import Flask, request, Response, json
