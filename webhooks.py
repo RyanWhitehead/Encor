@@ -11,6 +11,12 @@
 ##     -Make sure to get rid of debug and development env when I deploy
 ##
 ##     -When do we put them in hired?
+##
+##     -Test calling in ricochet
+##
+##     -test imports from indded to see if I can get location
+##
+##     -
 
 from flask import Flask, request, Response, json
 import header
@@ -161,6 +167,8 @@ def candidateAdded():
         if " " not in breezy_candidate['candidate']['name']:
             last_name = ""
         position = breezy_candidate['position']['name']
+        logger.info(breezy_candidate)
+        location = breezy_candidate['position']['position']['location']['name']
         phone_number = ""
         email_address = ""
         for i in breezy_candidate['candidate']:
@@ -180,7 +188,7 @@ def candidateAdded():
                 'lastName':last_name,
                 'acuity_link':acuity_link,
                 'position':position,
-                'status': "0. NEW"
+                'location':location
                 }
             
             ricochet_lead_id = requests.post('https://leads.ricochet.me/api/v1/lead/create/Breezy?token='+ricochet_post_token, data=ricochet_lead_values).json()["lead_id"]
@@ -326,8 +334,6 @@ def statusUpdate():
         position_id = header.find_file(lead_id,'/home/ubuntu/uncontacted_candidates.csv',2)[0][1]
 
         header.addCustom(candidate_id,position_id,'Ricochet Status',lead['status'])
-
-
 
         if lead['status'] == "2. CONTACTED - Wrong Numebr" or lead['status'] == "2. CONTACTED - Not Interested": #this is when they no show twice
             update = {

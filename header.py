@@ -165,6 +165,7 @@ def offbaord(candidate_id, reason):
 def addReporting(candidate):#this will be the function that runs when there is a new candidate added
     first_name = candidate['candidate']['name'].split()[0]
     last_name = candidate['candidate']['name'].split()[-1]
+    location = candidate['position']['position']['location']['name']
     if " " not in candidate['candidate']['name']:
         last_name = "lastName"
 
@@ -176,7 +177,7 @@ def addReporting(candidate):#this will be the function that runs when there is a
         if i == 'email_address':
             email_address = candidate['candidate']['email_address']
 
-    candidate = [[candidate['candidate']['_id'], first_name, last_name, phone_number, email_address, '0', '', datetime.now().date(), datetime.now().date() + timedelta(days=1), '','',"","",'', '']]
+    candidate = [[candidate['candidate']['_id'], first_name, last_name, location, phone_number, email_address, '0', '', datetime.now().date(), datetime.now().date() + timedelta(days=1), '','',"","",'', '']]
     add_file(candidate, '/home/ubuntu/reporting.csv')
     #then send the file to onedrive
     file = open('/home/ubuntu/reporting.csv', 'rb').read()
@@ -186,7 +187,7 @@ def addReporting(candidate):#this will be the function that runs when there is a
 def updateReporting(candidate_id, to_update): #this is the function that runs whenever anything is changed
     old = find_file(candidate_id,'/home/ubuntu/reporting.csv')[0]
     delete_file(candidate_id, '/home/ubuntu/reporting.csv')
-    columns = ["id","firstName", "lastName", 'phone', 'email', 'timesCalled', 'contactedOn', 'textDate1','textDate2', 'intScheduledDate','intConductedDate',"hiredDate","startedDate",'intDisposition','breezyStatus']
+    columns = ["id","firstName", "lastName", 'location', 'phone', 'email', 'timesCalled', 'contactedOn', 'textDate1','textDate2', 'intScheduledDate','intConductedDate',"hiredDate","startedDate",'intDisposition','breezyStatus']
     new_full = [[]]
     new = new_full[0]
     for i in range(len(columns)):
@@ -201,12 +202,27 @@ def updateReporting(candidate_id, to_update): #this is the function that runs wh
     file = open('/home/ubuntu/reporting.csv', 'rb').read()
     requests.put(URL+"/"+fileName+":/content", data=file, headers=headers)
 
+def stageName(stage):
+    if stage == 1606848913927:
+        return 'Texting'
+    elif stage == 1606848954990:
+        return 'Dialing'
+    elif stage ==  1606849078784:
+        return 'Interviewing'
+    elif stage == 1606849114297:
+        return 'Onboarding'
+    elif stage == 1606849160320:
+        return 'Hired'
+    else:
+        return stage
+
+
 def updateStage(candidate_id,position_id,stage):
     breezy_stage = {'stage_id':stage}
     breezy_custom_url = 'https://api.breezy.hr/v3/company/'+breezy_company_id+'/position/'+position_id+'/candidate/'+candidate_id+'/stage'
 
     requests.put(breezy_custom_url, data=breezy_stage, headers=breezy_header)
     update = {
-        'breezyStatus':stage
+        'breezyStatus':stageName(stage)
     }
     updateReporting(candidate_id,update)
