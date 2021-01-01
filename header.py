@@ -177,7 +177,7 @@ def addReporting(candidate):#this will be the function that runs when there is a
         if i == 'email_address':
             email_address = candidate['candidate']['email_address']
 
-    candidate = [[candidate['candidate']['_id'], first_name, last_name, location, phone_number, email_address, '0', '', datetime.now().date(), datetime.now().date() + timedelta(days=1), '','',"","",'', '']]
+    candidate = [[candidate['candidate']['_id'], first_name, last_name, location, phone_number, email_address, datetime.now().date(), '0', '', datetime.now().date(), datetime.now().date() + timedelta(days=1),'', '','',"","",'', '']]
     add_file(candidate, '/home/ubuntu/reporting.csv')
     #then send the file to onedrive
     file = open('/home/ubuntu/reporting.csv', 'rb').read()
@@ -187,7 +187,7 @@ def addReporting(candidate):#this will be the function that runs when there is a
 def updateReporting(candidate_id, to_update): #this is the function that runs whenever anything is changed
     old = find_file(candidate_id,'/home/ubuntu/reporting.csv')[0]
     delete_file(candidate_id, '/home/ubuntu/reporting.csv')
-    columns = ["id","firstName", "lastName", 'location', 'phone', 'email', 'timesCalled', 'contactedOn', 'textDate1','textDate2', 'intScheduledDate','intConductedDate',"hiredDate","startedDate",'intDisposition','breezyStatus']
+    columns = ["id","firstName", "lastName", 'location', 'phone', 'email', 'appliedOn', 'timesCalled', 'contactedOn', 'textDate1','textDate2', 'intScheduledOn','intScheduledFor','intConductedDate',"hiredDate","startedDate",'intDisposition','breezyStatus']
     new_full = [[]]
     new = new_full[0]
     for i in range(len(columns)):

@@ -14,9 +14,11 @@
 ##
 ##     -Test calling in ricochet
 ##
-##     -test imports from indded to see if I can get location
+##     -test imports from indded
 ##
-##     -
+##     -Add date that they applied
+##
+##     -Add date that they scheduled the interiew for
 
 from flask import Flask, request, Response, json
 import header
@@ -85,8 +87,8 @@ def interviewScheduled():
             
 
             update = {
-                'intScheduledDate':datetime.now().date(),
-                'intConductedDate':acuity.json()['date'],
+                'intScheduledon':datetime.now().date(),
+                'intScheduledFor':acuity.json()['date'],
                 'firstName':acuity.json()['firstName'],
                 'lastName':acuity.json()['lastName'],
                 'phone':phone,
@@ -247,7 +249,8 @@ def dispositionChanged():
         lead_id = header.find_file(candidate_id, '/home/ubuntu/uncontacted_candidates.csv')[0][2]
 
         update = {
-            'intDisposition':disposition
+            'intDisposition':disposition,
+            'intConductedDate':datetime.now().date()
         }
         header.updateReporting(candidate_id,update)
 
