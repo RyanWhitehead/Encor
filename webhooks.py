@@ -339,14 +339,14 @@ def statusUpdate():
         header.addCustom(candidate_id,position_id,'Ricochet Status',lead['status'])
 
         #cange stuff in breezy and reporting based on what stage they were changed to
-        if lead['status'] == "2. CONTACTED - Wrong Numebr" or lead['status'] == "2. CONTACTED - Not Interested": #this is when they no show twice
+        if lead['status'] == "2. CONTACTED - Wrong Numebr" or lead['status'] == "2. CONTACTED - Not Interested": #if they are contacted and need to be dropped
             update = {
                 'contactedOn':header.find_file(candidate_id,'/home/ubuntu/reporting.csv')[0][7]
             }
             header.updateReporting(candidate_id,update)
             header.offbaord(candidate_id, lead['status'])
         
-        elif lead['status'] == '2. CONTACTED - Interview Scheduled' or lead['status'] == '2. CONTACTED - Callback/Task set':
+        elif lead['status'] == '2. CONTACTED - Interview Scheduled' or lead['status'] == '2. CONTACTED - Callback/Task set':#if they have been conated but are still a lead
             update = {
                 'contactedOn':header.find_file(candidate_id,'/home/ubuntu/reporting.csv')[0][7]
             }
