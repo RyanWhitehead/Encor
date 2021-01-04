@@ -8,8 +8,6 @@
 ##
 ##     -if I were to run this for a month the brezzy thing would loose auth
 ##
-##     -Make sure to get rid of debug and development env when I deploy
-##
 ##     -When do we put them in hired?
 ##
 ##     -test imports from indded
@@ -41,9 +39,6 @@ acuity_user_id = header.get_secret('acuity_user_id')
 acuity_api_key = header.get_secret('acuity_api_key')
 
 ricochet_post_token = header.get_secret('ricochet_post_token')
-
-#TODO
-# -update reporting with the new information
 
 #this is the fucntion that fires everytime an interview is scheduled. all it needs to do is update the breezy
 #stage id to 'Interviewing'. this is so that we know not to text the candidate again.
@@ -141,8 +136,6 @@ def interviewScheduled():
 
 app.add_url_rule('/interviewRescheduled', 'interviewScheduled', interviewScheduled, methods=['POST'])
 
-#TODO
-# -Add a new row with the candidates informatino in reporting
 
 #this is the function that fires everytime a candiate is added into breezy. This is the starting off point for the whole
 #automated system. It should first get the candidate, then add them as a lead in ricochet, it should then get the id for
@@ -219,8 +212,6 @@ def candidateAdded():
         logger.exception("message")  
         return Response(status=500)
 
-#TODO
-# -update reporting with the new info
 
 #this is the function that triggers when anything is changed on a acuity appointment. While we don't need to know every change,
 #it is important to be able know when a disposition is change. In an ideal world, the disposition is only changed once, maybe twice
@@ -310,9 +301,6 @@ def dispositionChanged():
         logger.exception("message")  
         return Response(status=500)
     
-
-#TODO
-# -update reporting with the new info
 
 #this functino should trigger everytime a candidates dispostiion in ricochet changes. If we set this up the way I think we will
 #this will tell me if theyve been contated and would like to be called back, or if they havnt been contacted
