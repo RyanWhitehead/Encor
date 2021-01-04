@@ -6,12 +6,12 @@ from logging.handlers import RotatingFileHandler
 
 #The breezy dispositions
 Applied      = 'applied'
-Texting      = 1606848913927
-Disqualified = 'disqualified'
-Dialing      = 1606848954990
-Interviewing = 1606849078784
-Onboarding   = 1606849114297
-Hired        = 1606849160320
+Texting      = 1607027590363
+Disqualified = 1607027736983
+Dialing      = 1607027635579
+Interviewing = 1607027671797
+Onboarding   = 1607027688837
+Hired        = 1607027716017
 
 #the ricochet Status
 hired_ric = 18864
@@ -203,16 +203,18 @@ def updateReporting(candidate_id, to_update): #this is the function that runs wh
     requests.put(URL+"/"+fileName+":/content", data=file, headers=headers)
 
 def stageName(stage):
-    if stage == 1606848913927:
+    if stage == 1607027590363:
         return 'Texting'
-    elif stage == 1606848954990:
+    elif stage == 1607027635579:
         return 'Dialing'
-    elif stage ==  1606849078784:
+    elif stage ==  1607027671797:
         return 'Interviewing'
-    elif stage == 1606849114297:
+    elif stage == 1607027688837:
         return 'Onboarding'
-    elif stage == 1606849160320:
+    elif stage == 1607027716017:
         return 'Hired'
+    elif stage == 1607027736983:
+        return 'Disqualified'
     else:
         return stage
 
