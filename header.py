@@ -2,8 +2,6 @@ import csv, requests, json, boto3, logging, os
 from datetime import datetime, timedelta
 from logging.handlers import RotatingFileHandler
 
-#testing again
-
 #The breezy dispositions
 Applied      = 'applied'
 Texting      = 1607027590363
