@@ -12,13 +12,7 @@
 ##
 ##     -When do we put them in hired?
 ##
-##     -Test calling in ricochet
-##
 ##     -test imports from indded
-##
-##     -Add date that they applied
-##
-##     -Add date that they scheduled the interiew for
 
 from flask import Flask, request, Response, json
 import header
@@ -37,7 +31,6 @@ logger.setLevel(logging.DEBUG)
 logger.addHandler(handler)
 
 app = Flask(__name__)
-app.env = 'development'
 
 sign_in = {"email":header.get_secret('breezy_email'),'password':header.get_secret('breezy_password')}
 breezy_auth = requests.post('https://api.breezy.hr/v3/signin',data=sign_in).json()['access_token']
@@ -169,7 +162,6 @@ def candidateAdded():
         if " " not in breezy_candidate['candidate']['name']:
             last_name = ""
         position = breezy_candidate['position']['name']
-        logger.info(breezy_candidate)
         location = breezy_candidate['position']['position']['location']['name']
         phone_number = ""
         email_address = ""
@@ -340,14 +332,14 @@ def statusUpdate():
 
         if lead['status'] == "2. CONTACTED - Wrong Numebr" or lead['status'] == "2. CONTACTED - Not Interested": #this is when they no show twice
             update = {
-                'contactedOn':header.find_file(candidate_id,'/home/ubuntu/reporting.csv')[0][5]
+                'contactedOn':header.find_file(candidate_id,'/home/ubuntu/reporting.csv')[0][7]
             }
             header.updateReporting(candidate_id,update)
             header.offbaord(candidate_id, lead['status'])
         
         elif lead['status'] == '2. CONTACTED - Interview Scheduled' or lead['status'] == '2. CONTACTED - Callback/Task set':
             update = {
-                'contactedOn':header.find_file(candidate_id,'/home/ubuntu/reporting.csv')[0][5]
+                'contactedOn':header.find_file(candidate_id,'/home/ubuntu/reporting.csv')[0][7]
             }
             header.updateReporting(candidate_id,update)
 
@@ -375,16 +367,21 @@ def statusUpdate():
 
 @app.route("/leadCalled", methods=["POST"])
 def leadCalled():
+    try:
+        lead_id = request.json['lead']
+        candidate_id = header.find_file(lead_id,'/home/ubuntu/uncontacted_candidates.csv',2)[0][0]
 
-    lead_id = request.json['id']
-    candidate_id = header.find_file(lead_id,'/home/ubuntu/uncontacted_candidates.csv',2)[0][0]
-
-    update = {
-        'timesCalled':header.find_file(candidate_id,'/home/ubuntu/reporting.csv')[0][5]+1
-    }
-    header.updateReporting(candidate_id,update)
+        update = {
+            'timesCalled':int(header.find_file(candidate_id,'/home/ubuntu/reporting.csv')[0][7])+1
+        }
+        header.updateReporting(candidate_id,update)
+        return Response(status=200)
+    except:
+        logger.error("Unexpected error:")  
+        logger.exception("message")  
+        return Response(status=500)
 
 #this just runs the code on port 80, and will accept info form anyone (unofrtuantly this is necsassry
 #to get the webhooks from the different sites.)
 if __name__ == '__main__':
-	app.run(port=80,host='0.0.0.0',debug=True)
+	app.run(port=80,host='0.0.0.0')
