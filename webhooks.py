@@ -118,7 +118,7 @@ def interviewScheduled():
             requests.post("https://ricochet.me/api/v4/leads/externalupdate", data=body, headers=head)
 
             #add some stuff to breezy and update their stage
-            header.updateStage(candidate_id,position_id,header.Interviewing)
+            header.updateStage(candidate_id,position_id,'Interviewing')
             header.addCustom(candidate_id,position_id,'appointment_id',request.form['id'])
             #update ricochet status
             header.updateStatus(lead_id,header.contacted_interview)
@@ -207,7 +207,7 @@ def candidateAdded():
 
             header.addReporting(breezy_candidate)
             
-            header.updateStage(candidate_id,position_id,header.Texting)
+            header.updateStage(candidate_id,position_id,'Texting')
             
         #if it was a delete, delete them from acuity and the csv
         elif request.json['type'] == 'candidateDeleted':
@@ -260,7 +260,7 @@ def dispositionChanged():
         if request.form['action'] == 'changed':
             #get the correct pipleine stage based off of the disposistion
             if disposition == "Offer Accepted": #Offer Accepted
-                header.updateStage(candidate_id,position_id,header.Onboarding)
+                header.updateStage(candidate_id,position_id,'Onboarding')
                 header.updateStatus(lead_id,header.hired_ric)
                 update = {
                     'hiredDate':datetime.now().date()
@@ -353,7 +353,7 @@ def statusUpdate():
             header.updateReporting(candidate_id,update)
 
         elif lead['status'] == "0. NEW - Dial": #this is when they are in theyve been texted twice
-            header.updateStage(candidate_id,position_id,header.Dialing)
+            header.updateStage(candidate_id,position_id,'Dialing')
         
         elif lead['status'] == "4. DISQUALIFIED":#when they hit an endpoint, delete them from the csv
             header.delete_file(candidate_id, '/home/ubuntu/uncontacted_candidates.csv')

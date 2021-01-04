@@ -3,13 +3,15 @@ from datetime import datetime, timedelta
 from logging.handlers import RotatingFileHandler
 
 #The breezy dispositions
-Applied      = 'applied'
-Texting      = 1607027590363
-Disqualified = 1607027736983
-Dialing      = 1607027635579
-Interviewing = 1607027671797
-Onboarding   = 1607027688837
-Hired        = 1607027716017
+stages = {
+    'applied':'applied',
+    'Texting':1607027590363,
+    'Dialing':1607027635579,
+    'Interviewing':1607027671797,
+    'Onboarding':1607027688837,
+    'Hired':1607027716017,
+    "Disqualified":1607027736983
+}
 
 #the ricochet Status
 hired_ric = 18864
@@ -163,7 +165,7 @@ def offbaord(candidate_id, reason):
     lead_id = find_file(candidate_id,'/home/ubuntu/uncontacted_candidates.csv')[0][2]
     #update their stage to whatever, and delete them from the csv
     addCustom(candidate_id,position_id,'Discard Reason',reason)
-    updateStage(candidate_id,position_id,Disqualified)
+    updateStage(candidate_id,position_id,stages['Disqualified'])
     updateStatus(lead_id, disqualified_ric)
 
 #this adds a file to the reporintg csv when we get a new candidate
@@ -207,30 +209,13 @@ def updateReporting(candidate_id, to_update): #this is the function that runs wh
     file = open('/home/ubuntu/reporting.csv', 'rb').read()
     requests.put(URL+"/"+fileName+":/content", data=file, headers=headers)
 
-#this just takes the id of a stage and gives back its name for reporting
-def stageName(stage):
-    if stage == 1607027590363:
-        return 'Texting'
-    elif stage == 1607027635579:
-        return 'Dialing'
-    elif stage ==  1607027671797:
-        return 'Interviewing'
-    elif stage == 1607027688837:
-        return 'Onboarding'
-    elif stage == 1607027716017:
-        return 'Hired'
-    elif stage == 1607027736983:
-        return 'Disqualified'
-    else:
-        return stage
-
 #this updates the stage of the breezy candidate.
 def updateStage(candidate_id,position_id,stage):
-    breezy_stage = {'stage_id':stage}
+    breezy_stage = {'stage_id':stages[stage]}
     breezy_custom_url = 'https://api.breezy.hr/v3/company/'+breezy_company_id+'/position/'+position_id+'/candidate/'+candidate_id+'/stage'
 
     requests.put(breezy_custom_url, data=breezy_stage, headers=breezy_header)
     update = {
-        'breezyStatus':stageName(stage)
+        'breezyStatus':stage
     }
     updateReporting(candidate_id,update)
