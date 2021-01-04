@@ -27,6 +27,7 @@ called_left_message = 18855
 new_dial = 19050
 new = 18823
 
+#this takes what secret you want, and gets it from amazon
 def get_secret(secret):
 
     secret_name = "Breezy_sign_in"
@@ -40,6 +41,7 @@ def get_secret(secret):
     secret_json = get_secret_value_response['SecretString']
     return json.loads(secret_json)[secret]
 
+#this gets the secrets from amazon
 sign_in = {"email":get_secret('breezy_email'),'password':get_secret('breezy_password')}
 breezy_auth = requests.post('https://api.breezy.hr/v3/signin',data=sign_in).json()['access_token']
 breezy_header = {'Authorization':breezy_auth}
@@ -48,7 +50,7 @@ breezy_company_id = get_secret('breezy_company_id')
 acuity_user_id = get_secret('acuity_user_id')
 acuity_api_key = get_secret('acuity_api_key')
 
-
+#this sets up the stuff for putting the reporintg csv into the ondrive
 fileName = 'Reporting.csv'
 data = {'grant_type':"client_credentials", 
         'resource':"https://graph.microsoft.com", 
@@ -62,11 +64,12 @@ TOKEN = j["access_token"]
 URL = "https://graph.microsoft.com/v1.0/users/ethan.whitehead@encorbi.com/drive/root:/Encor Reports"
 headers={'Authorization': "Bearer " + TOKEN}
 
-
+#this is just a pretty way to print json
 def jprint(obj):
 	text = json.dumps(obj, sort_keys=True, indent=4)
 	print(text)
 
+#this writes to a csv
 def write_file(row, where):
     add_file = open(where, 'w')
 
@@ -75,7 +78,7 @@ def write_file(row, where):
         writer.writerows(row)
     return
 
-#add
+#this addes a row to a csv
 def add_file(row, where):
     add_file = open(where, 'a')
 
@@ -84,7 +87,7 @@ def add_file(row, where):
         writer.writerows(row)
     return
 
-#delete
+#this deletes a given row from a csv
 def delete_file(to_delete, file, look_up=0):
 
     found = False
@@ -109,6 +112,7 @@ def delete_file(to_delete, file, look_up=0):
     write_file(lines, file) 
     return deleted
 
+#this finds a file in a csv
 def find_file(to_find, file, look_up=0):
     found = False
     found_rows = []
@@ -126,20 +130,21 @@ def find_file(to_find, file, look_up=0):
 
         return found_rows
 
+#this gets the candidate from breezy
 def get_candidate(candidate_id,position_id):
     breezy_candidate_url = 'https://api.breezy.hr/v3/company/'+breezy_company_id+'/position/'+position_id+'/candidate/'+candidate_id
 
     breezy_candidate = requests.get(breezy_candidate_url, headers=breezy_header)
     return breezy_candidate
 
-    
+#this adds a custom attribute to a breezy candidate
 def addCustom(candidate_id, position_id, name, value):
     breezy_custom_params = {"name":name, 'value':value}
     breezy_custom_url = 'https://api.breezy.hr/v3/company/'+breezy_company_id+'/position/'+position_id+'/candidate/'+candidate_id+'/custom-attribute'
 
     requests.put(breezy_custom_url, data=breezy_custom_params, headers=breezy_header)
 
-
+#this updates the status in ricochet of a given lead to a given status
 def updateStatus(lead_id, new_status):
     print(lead_id,new_status)
     head = {
@@ -153,6 +158,7 @@ def updateStatus(lead_id, new_status):
     print(r)
     jprint(r.json())
 
+#this does some things to get rid of the info of the candidate.
 def offbaord(candidate_id, reason):
     #get the person who wasnt contacted
     position_id = find_file(candidate_id,'/home/ubuntu/uncontacted_candidates.csv')[0][1]
@@ -161,7 +167,8 @@ def offbaord(candidate_id, reason):
     addCustom(candidate_id,position_id,'Discard Reason',reason)
     updateStage(candidate_id,position_id,Disqualified)
     updateStatus(lead_id, disqualified_ric)
-    
+
+#this adds a file to the reporintg csv when we get a new candidate
 def addReporting(candidate):#this will be the function that runs when there is a new candidate added
     first_name = candidate['candidate']['name'].split()[0]
     last_name = candidate['candidate']['name'].split()[-1]
@@ -202,6 +209,7 @@ def updateReporting(candidate_id, to_update): #this is the function that runs wh
     file = open('/home/ubuntu/reporting.csv', 'rb').read()
     requests.put(URL+"/"+fileName+":/content", data=file, headers=headers)
 
+#this just takes the id of a stage and gives back its name for reporting
 def stageName(stage):
     if stage == 1607027590363:
         return 'Texting'
@@ -218,7 +226,7 @@ def stageName(stage):
     else:
         return stage
 
-
+#this updates the stage of the breezy candidate.
 def updateStage(candidate_id,position_id,stage):
     breezy_stage = {'stage_id':stage}
     breezy_custom_url = 'https://api.breezy.hr/v3/company/'+breezy_company_id+'/position/'+position_id+'/candidate/'+candidate_id+'/stage'
