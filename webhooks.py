@@ -4,13 +4,7 @@
 ##by a speciifc function and a specific route.
 
 ## TODO
-##     -If someone is hired, add them to paylocity
-##
-##     -if I were to run this for a month the brezzy thing would loose auth
-##
-##     -When do we put them in hired?
-##
-##     -test imports from indded
+##     -If someone is hired, add them to paylocity, and update their breezy stage
 
 from flask import Flask, request, Response, json
 import header
@@ -92,9 +86,7 @@ def interviewScheduled():
                 'email':email
             }
 
-
             header.updateReporting(candidate_id, update)
-
 
             #update breezy with the information just in case its changed
             update_info = {
@@ -141,6 +133,8 @@ def interviewScheduled():
     except IndexError:
         logger.error("There is some issue finding a candidate in the csv")
         logger.exception("message")  
+        contacted_candidate = [[candidate_id,position_id,lead_id]]
+        header.add_file(contacted_candidate,'/home/ubuntu/uncontacted_candidates.csv')
         return Response(status=501)
 
     except:

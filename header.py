@@ -165,7 +165,7 @@ def offbaord(candidate_id, reason):
     lead_id = find_file(candidate_id,'/home/ubuntu/uncontacted_candidates.csv')[0][2]
     #update their stage to whatever, and delete them from the csv
     addCustom(candidate_id,position_id,'Discard Reason',reason)
-    updateStage(candidate_id,position_id,stages['Disqualified'])
+    updateStage(candidate_id,position_id,'Disqualified')
     updateStatus(lead_id, disqualified_ric)
 
 #this adds a file to the reporintg csv when we get a new candidate
