@@ -184,7 +184,7 @@ def candidateAdded():
         #if it was a candidate added, added them into ricochet, and put them in the texting pipeline
         if request.json['type'] == 'candidateAdded':
 
-            acuity_link =  "https://encorsolar.as.me/?appointmentType=19039217&firstName="+first_name+"&lastName="+last_name+"&field:8821576="+candidate_id+"&phone="+phone_number+"&email="+email_address
+            acuity_link =  "https://encorsolar.as.me/?appointmentType=19039217&firstName="+first_name+"&lastName="+last_name+"&field:8821576="+candidate_id+"&phone="+phone_number+"&email="+email_address+'&field:8927450='+position+location
             
             #this block of text send the info to ricochet and adds a custom attribute that is the breezy id to search for later
             ricochet_lead_values = {
@@ -276,6 +276,7 @@ def dispositionChanged():
             # called, put them into noshow(owned) otherwise if they noshow an interview, and were never in a contact status put them in the noshow status. second, have they no 
             # showed an interview before, if they have and are doing it again, we need to update their breezy to disqaulifed as well as ricochet.
             elif disposition == "No Show": #this is a problem because of rescheduling
+                header.updateStatus(lead_id,header.interview_no)
                 no_show = False
                 rescheduled = False
                 for i in header.get_candidate(candidate_id,position_id).json()['custom_attributes']:

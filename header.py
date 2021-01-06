@@ -188,7 +188,8 @@ def addReporting(candidate):#this will be the function that runs when there is a
     add_file(candidate, '/home/ubuntu/reporting.csv')
     #then send the file to onedrive
     file = open('/home/ubuntu/reporting.csv', 'rb').read()
-    requests.put(URL+"/"+fileName+":/content", data=file, headers=headers)
+    r = requests.put(URL+"/"+fileName+":/content", data=file, headers=headers)
+    return r
 
 #this will take an id for lookup, and a dictionary with keys that represent the columns that we would like to change, the values will be the new values.
 def updateReporting(candidate_id, to_update): #this is the function that runs whenever anything is changed
@@ -207,7 +208,8 @@ def updateReporting(candidate_id, to_update): #this is the function that runs wh
             new.append(old[i])
     add_file(new_full, '/home/ubuntu/reporting.csv')
     file = open('/home/ubuntu/reporting.csv', 'rb').read()
-    requests.put(URL+"/"+fileName+":/content", data=file, headers=headers)
+    r = requests.put(URL+"/"+fileName+":/content", data=file, headers=headers)
+    return r
 
 #this updates the stage of the breezy candidate.
 def updateStage(candidate_id,position_id,stage):
