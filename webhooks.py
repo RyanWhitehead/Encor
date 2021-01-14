@@ -5,6 +5,14 @@
 
 ## TODO
 ##     -If someone is hired, add them to paylocity, and update their breezy stage
+##
+##     -Find a way to fix the reporting file to include everyone
+
+##Give everyone without a candidate id a candidat3 id by linking their name an dnumber WHEN I ADD THIER ID IT WILL UPDATE AUTOMATICALLY
+##
+##Do a mass pull of everyone, and get all their information to put into reporting, if they didnt have a candidate Id leave the dates blank
+##
+##FInally, re instate reporting and it should all work because we now can track everyone.
 
 from flask import Flask, request, Response, json
 import header
@@ -78,7 +86,8 @@ def interviewScheduled():
             
             #Update reporting with the information we now hve
             update = {
-                'intScheduledon':datetime.now().date(),
+                'recruiter':acuity.json()['calendar'],
+                'intScheduledOn':datetime.now().date(),
                 'intScheduledFor':acuity.json()['date'],
                 'firstName':acuity.json()['firstName'],
                 'lastName':acuity.json()['lastName'],
@@ -86,7 +95,7 @@ def interviewScheduled():
                 'email':email
             }
 
-            header.updateReporting(candidate_id, update)
+            #header.updateReporting(candidate_id, update)
 
             #update breezy with the information just in case its changed
             update_info = {
@@ -133,8 +142,6 @@ def interviewScheduled():
     except IndexError:
         logger.error("There is some issue finding a candidate in the csv")
         logger.exception("message")  
-        contacted_candidate = [[candidate_id,position_id,lead_id]]
-        header.add_file(contacted_candidate,'/home/ubuntu/uncontacted_candidates.csv')
         return Response(status=501)
 
     except:
@@ -167,6 +174,7 @@ def candidateAdded():
             last_name = ""
         position = breezy_candidate['position']['name']
         location = breezy_candidate['position']['position']['location']['name']
+        location = location.replace(',',' ')
         phone_number = ""
         email_address = ""
         for i in breezy_candidate['candidate']:
@@ -178,7 +186,7 @@ def candidateAdded():
         #if it was a candidate added, added them into ricochet, and put them in the texting pipeline
         if request.json['type'] == 'candidateAdded':
 
-            acuity_link =  "https://encorsolar.as.me/?appointmentType=19039217&firstName="+first_name+"&lastName="+last_name+"&field:8821576="+candidate_id+"&phone="+phone_number+"&email="+email_address+'&field:8927450='+position+location
+            acuity_link =  "https://encorsolar.as.me/?appointmentType=19039217&field:8821576="+candidate_id+"&lastName="+last_name+"&firstName="+first_name+"&phone="+phone_number+"&email="+email_address+'&field:8927450='+position+'&field:9065689='+location
             
             #this block of text send the info to ricochet and adds a custom attribute that is the breezy id to search for later
             ricochet_lead_values = {
@@ -199,7 +207,7 @@ def candidateAdded():
             contacted_candidate = [[candidate_id,position_id,ricochet_lead_id]]
             header.add_file(contacted_candidate,'/home/ubuntu/uncontacted_candidates.csv')
 
-            header.addReporting(breezy_candidate)
+            #header.addReporting(breezy_candidate)
             
             header.updateStage(candidate_id,position_id,'Texting')
             
@@ -234,6 +242,8 @@ def dispositionChanged():
         #take the appointment and get the breezy id out of it
         acuity = requests.get("https://acuityscheduling.com/api/v1/appointments/"+request.form['id'], auth=(acuity_user_id,acuity_api_key))
 
+        logger.info(acuity.json())
+
         for i in acuity.json()['forms']:
             if i['name'] == "Candidate Id":
                 candidate_id = i['values'][0]['value']
@@ -248,7 +258,7 @@ def dispositionChanged():
             'intDisposition':disposition,
             'intConductedDate':datetime.now().date()
         }
-        header.updateReporting(candidate_id,update)
+        #header.updateReporting(candidate_id,update)
 
         #if something was changed, get the new disposition and act accordingly by changeing stuff in breezy and whatnot
         if request.form['action'] == 'changed':
@@ -259,7 +269,7 @@ def dispositionChanged():
                 update = {
                     'hiredDate':datetime.now().date()
                 }
-                header.updateReporting(candidate_id,update)
+                #header.updateReporting(candidate_id,update)
             elif disposition == "Offer Declined": #Offer Declined
                 header.offbaord(candidate_id,"Offer Made - Not Accepted")
                 
@@ -308,8 +318,6 @@ def dispositionChanged():
     except IndexError:
         logger.error("There is some issue finding a candidate in the csv")
         logger.exception("message")  
-        contacted_candidate = [[candidate_id,position_id,lead_id]]
-        header.add_file(contacted_candidate,'/home/ubuntu/uncontacted_candidates.csv')
         return Response(status=501)
     except:
         logger.error("Unexpected error:")  
@@ -336,22 +344,19 @@ def statusUpdate():
         #cange stuff in breezy and reporting based on what stage they were changed to
         if lead['status'] == "2. CONTACTED - Wrong Numebr" or lead['status'] == "2. CONTACTED - Not Interested": #if they are contacted and need to be dropped
             update = {
-                'contactedOn':header.find_file(candidate_id,'/home/ubuntu/reporting.csv')[0][7]
+                #'contactedOn':header.find_file(candidate_id,'/home/ubuntu/reporting.csv')[0][9]
             }
-            header.updateReporting(candidate_id,update)
+            #header.updateReporting(candidate_id,update)
             header.offbaord(candidate_id, lead['status'])
         
         elif lead['status'] == '2. CONTACTED - Interview Scheduled' or lead['status'] == '2. CONTACTED - Callback/Task set':#if they have been conated but are still a lead
             update = {
-                'contactedOn':header.find_file(candidate_id,'/home/ubuntu/reporting.csv')[0][7]
+                #'contactedOn':header.find_file(candidate_id,'/home/ubuntu/reporting.csv')[0][9]
             }
-            header.updateReporting(candidate_id,update)
+            #header.updateReporting(candidate_id,update)
 
         elif lead['status'] == "0. NEW - Dial": #this is when they are in theyve been texted twice
             header.updateStage(candidate_id,position_id,'Dialing')
-        
-        elif lead['status'] == "4. DISQUALIFIED":#when they hit an endpoint, delete them from the csv
-            header.delete_file(candidate_id, '/home/ubuntu/uncontacted_candidates.csv')
         
         return Response(status=200)
     #check for didferent errors and log them.
@@ -362,8 +367,6 @@ def statusUpdate():
     except IndexError:
         logger.error("There is some issue finding a candidate in the csv")
         logger.exception("message")  
-        contacted_candidate = [[candidate_id,position_id,lead_id]]
-        header.add_file(contacted_candidate,'/home/ubuntu/uncontacted_candidates.csv')
         return Response(status=501)
     except:
         logger.error("Unexpected error:")  
@@ -379,9 +382,9 @@ def leadCalled():
         candidate_id = header.find_file(lead_id,'/home/ubuntu/uncontacted_candidates.csv',2)[0][0]
 
         update = {
-            'timesCalled':int(header.find_file(candidate_id,'/home/ubuntu/reporting.csv')[0][7])+1
+            #'timesCalled':int(header.find_file(candidate_id,'/home/ubuntu/reporting.csv')[0][9])+1
         }
-        header.updateReporting(candidate_id,update)
+        #header.updateReporting(candidate_id,update)
         return Response(status=200)
     except:
         logger.error("Unexpected error:")  
