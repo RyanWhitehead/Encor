@@ -5,8 +5,6 @@
 
 ## TODO
 ##     -If someone is hired, add them to paylocity, and update their breezy stage
-##
-##     -Find a way to fix the reporting file to include everyone
 
 ##Give everyone without a candidate id a candidat3 id by linking their name an dnumber WHEN I ADD THIER ID IT WILL UPDATE AUTOMATICALLY
 ##
@@ -62,6 +60,11 @@ def interviewScheduled():
             #get the posisiton id and lead id from the csv using the candidate id
             position_id = header.find_file(candidate_id, '/home/ubuntu/uncontacted_candidates.csv')[0][1]
             lead_id = header.find_file(candidate_id, '/home/ubuntu/uncontacted_candidates.csv')[0][2]
+
+            position = requests.get("https://api.breezy.hr/v3/company/"+breezy_company_id+"/position/"+position_id,headers=breezy_header).json()
+
+            position_name = position['name']
+            location = position['location']['name']
             
             #if they reschedule, set the disposition back to null
             if request.form['action'] == 'rescheduled':
@@ -76,6 +79,20 @@ def interviewScheduled():
                     ]
                 })
                 requests.put("https://acuityscheduling.com/api/v1/appointments/"+request.form['id'], data=empty_disposition, auth=(acuity_user_id,acuity_api_key))
+
+            filled_appointment = json.dumps({
+                    'fields':[
+                        {
+                        "id":8927450,
+                        'value':position_name
+                        },
+                        {
+                        "id":9065689,
+                        'value':location
+                        }
+                    ]
+                })
+            requests.put("https://acuityscheduling.com/api/v1/appointments/"+request.form['id'], data=filled_appointment, auth=(acuity_user_id,acuity_api_key)) 
                 
             #get the candidates info from the appointment id
             full_name = acuity.json()['firstName']+" "+acuity.json()['lastName']
@@ -186,7 +203,7 @@ def candidateAdded():
         #if it was a candidate added, added them into ricochet, and put them in the texting pipeline
         if request.json['type'] == 'candidateAdded':
 
-            acuity_link =  "https://encorsolar.as.me/?appointmentType=19039217&field:8821576="+candidate_id+"&lastName="+last_name+"&firstName="+first_name+"&phone="+phone_number+"&email="+email_address+'&field:8927450='+position+'&field:9065689='+location
+            acuity_link =  "https://encorsolar.as.me/?appointmentType=19039217&field:8821576="+candidate_id+'&field:8927450='+position+'&field:9065689='+location+"&lastName="+last_name+"&firstName="+first_name+"&phone="+phone_number+"&email="+email_address
             
             #this block of text send the info to ricochet and adds a custom attribute that is the breezy id to search for later
             ricochet_lead_values = {
@@ -198,7 +215,7 @@ def candidateAdded():
                 'location':location
                 }
             
-            ricochet_lead_id = requests.post('https://leads.ricochet.me/api/v1/lead/create/Breezy?token='+ricochet_post_token, data=ricochet_lead_values).json()["lead_id"]
+            ricochet_lead_id = ''
 
             #this adds the custom url to the candidate
             header.addCustom(candidate_id,position_id,'Custom Link',acuity_link)
@@ -207,9 +224,22 @@ def candidateAdded():
             contacted_candidate = [[candidate_id,position_id,ricochet_lead_id]]
             header.add_file(contacted_candidate,'/home/ubuntu/uncontacted_candidates.csv')
 
-            #header.addReporting(breezy_candidate)
+            update_candidate = True
+            dont_update = []
+            q = requests.get("https://api.breezy.hr/v3/company/"+breezy_company_id+"/position/"+position_id+"/candidate/"+candidate_id+"/questionnaires",headers=breezy_header).json()
             
-            header.updateStage(candidate_id,position_id,'Texting')
+            for question in q[0]['questions']:
+                for answer in question['options']:
+                    for i in answer:
+                        if i == 'actions':
+                            dont_update.append(answer['text'])
+                    if question['response'] in dont_update:
+                        update_candidate = False
+                dont_update = []
+                
+            if update_candidate:
+                header.updateStage(candidate_id,position_id,'Texting')
+                ricochet_lead_id = requests.post('https://leads.ricochet.me/api/v1/lead/create/Breezy?token='+ricochet_post_token, data=ricochet_lead_values).json()["lead_id"]
             
         #if it was a delete, delete them from acuity and the csv
         elif request.json['type'] == 'candidateDeleted':
