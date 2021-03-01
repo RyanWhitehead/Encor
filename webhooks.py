@@ -4,19 +4,16 @@
 ##by a speciifc function and a specific route.
 
 ## TODO
-##     -If someone is hired, add them to paylocity, and update their breezy stage
-
-##Give everyone without a candidate id a candidat3 id by linking their name an dnumber WHEN I ADD THIER ID IT WILL UPDATE AUTOMATICALLY
-##
-##Do a mass pull of everyone, and get all their information to put into reporting, if they didnt have a candidate Id leave the dates blank
-##
-##FInally, re instate reporting and it should all work because we now can track everyone.
+##     -Add the onboarding webhook into here
 
 from flask import Flask, request, Response, json
 import header
 import requests, boto3, json, tenacity, logging, sys
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
+import smtplib, ssl
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 #this code makes it so only werkzueg is logging, and creates a rotating file handler to make sure that afer 10 mbs there is a new file create
 for name in ['boto', 'urllib3', 's3transfer', 'boto3', 'botocore', 'nose']:
@@ -43,11 +40,17 @@ acuity_api_key = header.get_secret('acuity_api_key')
 
 ricochet_post_token = header.get_secret('ricochet_post_token')
 
+port = 465  # For SSL
+smtp_server = "smtp.gmail.com"
+sender_email = "r.whitehead@encorsolar.com"  # Enter your address
+password = header.get_secret('breezy_password')
+
 #this is the fucntion that fires everytime an interview is scheduled. all it needs to do is update the breezy
 #stage id to 'Interviewing'. this is so that we know not to text the candidate again.
 @app.route('/interviewScheduled', methods=['POST'])
 def interviewScheduled():
     try:
+
         #if the requrst is scheduled or reschedulued
         if request.form['action'] == 'scheduled' or request.form['action'] == 'rescheduled':
             #get the appointment info from acuity
@@ -100,19 +103,6 @@ def interviewScheduled():
             email = acuity.json()['email']
 
             breezy_update_url = 'https://api.breezy.hr/v3/company/'+breezy_company_id+'/position/'+position_id+'/candidate/'+candidate_id
-            
-            #Update reporting with the information we now hve
-            update = {
-                'recruiter':acuity.json()['calendar'],
-                'intScheduledOn':datetime.now().date(),
-                'intScheduledFor':acuity.json()['date'],
-                'firstName':acuity.json()['firstName'],
-                'lastName':acuity.json()['lastName'],
-                'phone':phone,
-                'email':email
-            }
-
-            #header.updateReporting(candidate_id, update)
 
             #update breezy with the information just in case its changed
             update_info = {
@@ -136,6 +126,9 @@ def interviewScheduled():
             requests.post("https://ricochet.me/api/v4/leads/externalupdate", data=body, headers=head)
 
             #add some stuff to breezy and update their stage
+
+            #I beleive the only difference is the id of what stage we send them too. and if we dont use ricochet that part isn't nesscasry
+
             header.updateStage(candidate_id,position_id,'Interviewing')
             header.addCustom(candidate_id,position_id,'appointment_id',request.form['id'])
             #update ricochet status
@@ -179,9 +172,13 @@ app.add_url_rule('/interviewRescheduled', 'interviewScheduled', interviewSchedul
 def candidateAdded():
     try:
         #get some info from the webhook
+        logger.info(request.json['type'])
         breezy_candidate = request.json['object']
         candidate_id = breezy_candidate['candidate']['_id']
         position_id = breezy_candidate['position']['_id']
+        pipeline_id = breezy_candidate['position']['pipeline_id']
+        logger.info(pipeline_id)
+        logger.info(header.get_position(position_id))
         
         first_name = breezy_candidate['candidate']['name'].split()[0]
         last_name = breezy_candidate['candidate']['name'].split()[-1]
@@ -192,6 +189,8 @@ def candidateAdded():
         position = breezy_candidate['position']['name']
         location = breezy_candidate['position']['position']['location']['name']
         location = location.replace(',',' ')
+        state = location[-2:]
+        logger.info(state)
         phone_number = ""
         email_address = ""
         for i in breezy_candidate['candidate']:
@@ -200,11 +199,45 @@ def candidateAdded():
             if i == 'email_address':
                 email_address = breezy_candidate['candidate']['email_address']
 
+
+        #if the pipeline id is solar pro
         #if it was a candidate added, added them into ricochet, and put them in the texting pipeline
         if request.json['type'] == 'candidateAdded':
-
-            acuity_link =  "https://encorsolar.as.me/?appointmentType=19039217&field:8821576="+candidate_id+'&field:8927450='+position+'&field:9065689='+location+"&lastName="+last_name+"&firstName="+first_name+"&phone="+phone_number+"&email="+email_address
             
+            abr = ''
+            if pipeline_id == "2146133649d0":
+                abr = "-ST"
+            elif pipeline_id == "df08b2664c67":
+                abr = "-SP"
+
+            calendar = "appointmentType=19039217"
+            calendars = requests.get("https://acuityscheduling.com/api/v1/calendars", auth=(acuity_user_id,acuity_api_key)).json()
+            for i in calendars:
+                cal = i['name'].replace(',',' ') #this is the claendar name without the comma
+                pos = location + abr#this is the location, no comma, with everything after the hyphem, including it.
+                logger.info("pos")
+                logger.info(pos)
+                logger.info(cal)
+                logger.info(i['description'])
+                #if '-' in cal:
+                    #if cal[:cal.index('-')] == location:
+                        #if cal[cal.index('-'):] == "ST":
+
+                        #calendar = "calendarID="+str(i['id'])
+                logger.info(location)
+                if cal[:len(cal)-3] == location: #CHANGE LOCATION TO POS WHEN WE GO LIVE
+                    if cal[len(cal)-3:] == "-SP":
+                        calendar = "calendarID="+str(i['id'])
+                    
+            
+            #this is for the interviews cody conducts
+            if state == "FL" and pipeline_id == "f9e32ef1e23a":
+                calendar = "appointmentType=20320383"
+
+            acuity_link =  "https://encorsolar.as.me/?"+calendar+"&field:8821576="+candidate_id+'&field:8927450='+position+'&field:9065689='+location+"&lastName="+last_name+"&firstName="+first_name+"&phone="+phone_number+"&email="+email_address
+            
+            logger.info(acuity_link)
+
             #this block of text send the info to ricochet and adds a custom attribute that is the breezy id to search for later
             ricochet_lead_values = {
                 'phone': phone_number,
@@ -220,32 +253,69 @@ def candidateAdded():
             #this adds the custom url to the candidate
             header.addCustom(candidate_id,position_id,'Custom Link',acuity_link)
 
-            #this code saves the candidate
-            contacted_candidate = [[candidate_id,position_id,ricochet_lead_id]]
-            header.add_file(contacted_candidate,'/home/ubuntu/uncontacted_candidates.csv')
 
             update_candidate = True
             dont_update = []
             q = requests.get("https://api.breezy.hr/v3/company/"+breezy_company_id+"/position/"+position_id+"/candidate/"+candidate_id+"/questionnaires",headers=breezy_header).json()
             
-            for question in q[0]['questions']:
-                for answer in question['options']:
-                    for i in answer:
-                        if i == 'actions':
-                            dont_update.append(answer['text'])
-                    if question['response'] in dont_update:
-                        update_candidate = False
-                dont_update = []
-                
-            if update_candidate:
-                header.updateStage(candidate_id,position_id,'Texting')
-                ricochet_lead_id = requests.post('https://leads.ricochet.me/api/v1/lead/create/Breezy?token='+ricochet_post_token, data=ricochet_lead_values).json()["lead_id"]
+            try:
+                for question in q[0]['questions']:
+                    for answer in question['options']:
+                        for i in answer:
+                            if i == 'actions':
+                                dont_update.append(answer['text'])
+                        if question['response'] in dont_update:
+                            update_candidate = False
+                    dont_update = []
+                    
+                if update_candidate:
+                    header.updateStage(candidate_id,position_id,'Texting')
+                    ricochet_lead_id = requests.post('https://leads.ricochet.me/api/v1/lead/create/Breezy?token='+ricochet_post_token, data=ricochet_lead_values).json()["lead_id"]
+                    #this code saves the candidate
+                    contacted_candidate = [[candidate_id,position_id,ricochet_lead_id, pipeline_id]]
+                    header.add_file(contacted_candidate,'/home/ubuntu/uncontacted_candidates.csv')
+            except:
+                pass
             
         #if it was a delete, delete them from acuity and the csv
         elif request.json['type'] == 'candidateDeleted':
             requests.delete("https://acuityscheduling.com/api/v1/clients?firstName="+first_name+"&lastName="+last_name+"&phone="+phone_number, auth=(acuity_user_id,acuity_api_key))
             header.delete_file(candidate_id, '/home/ubuntu/uncontacted_candidates.csv')
+        """
+        elif request.json['type'] == 'candidateStatusUpdated':
 
+            if request.json['type'] == 'candidateStatusUpdated' and request.json['object']['stage']['id'] == header.stages['Onboarding']:
+
+                employee = {
+                    
+                }
+
+                #add them to paylocity
+                #requests.post("https://api.paylocity.com/api/v1/employee", header=paylocity_header, data=employee)
+
+                logger.info('they should be sent an email')                
+
+                #send them an email
+                receiver_email = ['ryanbilly204@gmail.com']  # Enter receiver address
+
+                msg = MIMEMultipart('alternative')
+                msg['Subject'] = 'Someone has been added to onboarding'
+                msg['From'] = "Encor Solar"
+                msg['To'] = receiver_email
+
+
+                part1 = MIMEText(text, 'plain')
+                part2 = MIMEText(html, 'html')
+
+                msg.attach(part1)
+                msg.attach(part2)
+
+                with smtplib.SMTP_SSL(smtp_server, port) as server:
+                    server.login(sender_email, password)
+                    server.send_message(msg)
+                
+            return Response(status=200)
+            """
         return Response(status=200)
         
     #check for didferent errors and log them.
@@ -269,10 +339,9 @@ def candidateAdded():
 @app.route('/dispositionChanged', methods=['POST'])
 def dispositionChanged():
     try:
+        #if they are a solar pro:
         #take the appointment and get the breezy id out of it
         acuity = requests.get("https://acuityscheduling.com/api/v1/appointments/"+request.form['id'], auth=(acuity_user_id,acuity_api_key))
-
-        logger.info(acuity.json())
 
         for i in acuity.json()['forms']:
             if i['name'] == "Candidate Id":
@@ -283,12 +352,6 @@ def dispositionChanged():
         position_id = header.find_file(candidate_id, '/home/ubuntu/uncontacted_candidates.csv')[0][1]
         lead_id = header.find_file(candidate_id, '/home/ubuntu/uncontacted_candidates.csv')[0][2]
 
-        #when the dispostion is changed have reporting reflect that
-        update = {
-            'intDisposition':disposition,
-            'intConductedDate':datetime.now().date()
-        }
-        #header.updateReporting(candidate_id,update)
 
         #if something was changed, get the new disposition and act accordingly by changeing stuff in breezy and whatnot
         if request.form['action'] == 'changed':
@@ -296,10 +359,6 @@ def dispositionChanged():
             if disposition == "Offer Accepted": #Offer Accepted
                 header.updateStage(candidate_id,position_id,'Onboarding')
                 header.updateStatus(lead_id,header.hired_ric)
-                update = {
-                    'hiredDate':datetime.now().date()
-                }
-                #header.updateReporting(candidate_id,update)
             elif disposition == "Offer Declined": #Offer Declined
                 header.offbaord(candidate_id,"Offer Made - Not Accepted")
                 
@@ -369,21 +428,24 @@ def statusUpdate():
         candidate_id = header.find_file(lead_id,'/home/ubuntu/uncontacted_candidates.csv',2)[0][0]
         position_id = header.find_file(lead_id,'/home/ubuntu/uncontacted_candidates.csv',2)[0][1]
 
+        last_status = ''
+        for i in header.get_candidate(candidate_id,position_id).json()['custom_attributes']:
+             if i['name'] == 'Ricochet Status':
+                 last_status = i['value']
+        
+        logger.info(last_status)
+
         header.addCustom(candidate_id,position_id,'Ricochet Status',lead['status'])
 
         #cange stuff in breezy and reporting based on what stage they were changed to
         if lead['status'] == "2. CONTACTED - Wrong Numebr" or lead['status'] == "2. CONTACTED - Not Interested": #if they are contacted and need to be dropped
-            update = {
-                #'contactedOn':header.find_file(candidate_id,'/home/ubuntu/reporting.csv')[0][9]
-            }
-            #header.updateReporting(candidate_id,update)
             header.offbaord(candidate_id, lead['status'])
         
-        elif lead['status'] == '2. CONTACTED - Interview Scheduled' or lead['status'] == '2. CONTACTED - Callback/Task set':#if they have been conated but are still a lead
-            update = {
-                #'contactedOn':header.find_file(candidate_id,'/home/ubuntu/reporting.csv')[0][9]
-            }
-            #header.updateReporting(candidate_id,update)
+        elif lead['status'] == '2. CONTACTED - Interview Scheduled':#if they have been conated but are still a lead
+            if 'CONTACTED' not in last_status or 'CALLED' not in last_status:
+                header.addCustom(candidate_id,position_id,'Contacted Through','text')
+            else:
+                header.addCustom(candidate_id,position_id,'Contacted Through','call')
 
         elif lead['status'] == "0. NEW - Dial": #this is when they are in theyve been texted twice
             header.updateStage(candidate_id,position_id,'Dialing')
@@ -408,13 +470,6 @@ def statusUpdate():
 @app.route("/leadCalled", methods=["POST"])
 def leadCalled():
     try:
-        lead_id = request.json['lead']
-        candidate_id = header.find_file(lead_id,'/home/ubuntu/uncontacted_candidates.csv',2)[0][0]
-
-        update = {
-            #'timesCalled':int(header.find_file(candidate_id,'/home/ubuntu/reporting.csv')[0][9])+1
-        }
-        #header.updateReporting(candidate_id,update)
         return Response(status=200)
     except:
         logger.error("Unexpected error:")  
